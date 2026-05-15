@@ -1,0 +1,29 @@
+version: "1.0"
+name: "Aggressive trading agent"
+
+session:
+  budget_usd: 50.00
+  per_request_cap_usd: 2.00
+  max_duration_minutes: 60
+
+loop_detection:
+  enabled: true
+  window_size: 20
+  similarity_threshold: 0.90
+  max_consecutive_similar: 5
+
+networks:
+  allowed:
+    - "eip155:8453"
+    - "eip155:84532"
+    - "eip155:137"
+  assets:
+    - "USDC"
+    - "PYUSD"
+    - "USDT"
+
+kite_passport:
+  agent_address: "0x0000000000000000000000000000000000000000"
+  session_key: "0x0000000000000000000000000000000000000000"
+  attestation_frequency: every_nth
+  attestation_n: 10

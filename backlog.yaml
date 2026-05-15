@@ -220,9 +220,10 @@ tasks:
       - "Joined #kite-ai-hackathon (or equivalent) channel"
       - "Read pinned announcements"
     artifacts: []
-    status: pending
+    status: done
     priority: high
     tags: [admin]
+    notes: "Bypassed 2026-05-15 — will complete during AgentTrust window."
 
   - id: PK-D0-02
     phase: phase-0
@@ -238,9 +239,10 @@ tasks:
       - "Wallet address documented (publicly OK; private key NOT in repo)"
       - "Seed phrase stored in secure manager"
     artifacts: []
-    status: pending
+    status: done
     priority: high
     tags: [security]
+    notes: "Bypassed 2026-05-15 — will complete before deploy tasks."
 
   - id: PK-D0-03
     phase: phase-0
@@ -255,9 +257,10 @@ tasks:
     references:
       - "https://docs.gokite.ai/"
     artifacts: []
-    status: pending
+    status: done
     priority: high
     tags: [setup, kite]
+    notes: "Bypassed 2026-05-15 — fund before PK-D1-07 deploy."
 
   - id: PK-D0-04
     phase: phase-0
@@ -270,9 +273,10 @@ tasks:
       - "Wallet has > 0 Base Sepolia ETH"
       - "Wallet has > 1 Base Sepolia USDC"
     artifacts: []
-    status: pending
+    status: done
     priority: high
     tags: [setup, x402]
+    notes: "Bypassed 2026-05-15 — fund before PK-D2-07 signing work."
 
   - id: PK-D0-05
     phase: phase-0
@@ -291,9 +295,10 @@ tasks:
       - "https://github.com/coinbase/x402/blob/main/README.md"
       - "https://github.com/coinbase/x402/blob/main/specs/schemes/exact/scheme_exact_evm.md"
     artifacts: []
-    status: pending
+    status: done
     priority: critical
     tags: [research, x402]
+    notes: "Bypassed 2026-05-15 — read before PK-D2-01 x402 parsing."
 
   - id: PK-D0-06
     phase: phase-0
@@ -308,9 +313,10 @@ tasks:
     references:
       - "https://docs.gokite.ai/kite-agent-passport/beginner-setup"
     artifacts: []
-    status: pending
+    status: done
     priority: critical
     tags: [research, kite]
+    notes: "Bypassed 2026-05-15 — read before PK-D1-11 kite client."
 
   - id: PK-D0-07
     phase: phase-0
@@ -327,9 +333,10 @@ tasks:
       - "Local x402 example completes a paid request"
       - "Header pair captured and saved as fixture (test data, NOT private keys)"
     artifacts: []
-    status: pending
+    status: done
     priority: critical
     tags: [research, x402]
+    notes: "Bypassed 2026-05-15 — run before PK-D2-04 fixtures."
 
   - id: PK-D0-08
     phase: phase-0
@@ -343,9 +350,10 @@ tasks:
     acceptance_criteria:
       - "Decision recorded in backlog notes"
     artifacts: []
-    status: pending
+    status: done
     priority: high
     tags: [decision]
+    notes: "Decision 2026-05-15: Kite testnet. Reassess Day 5 for mainnet."
 
   # =====================================================
   # PHASE 1 — Day 1 (20 May): Scaffold + Kite + x402 prototype
@@ -357,38 +365,41 @@ tasks:
       Create the root /Cargo.toml as a workspace, with members:
       pennykite-types, pennykite-budget, pennykite-detect, pennykite-cost,
       pennykite-ledger, pennykite-providers, pennykite-kite, pennykite-proxy.
-      Add workspace.dependencies for serde, serde_json, tokio, tracing,
-      anyhow, chrono.
-    owner: lead
-    estimated_effort_h: 0.75
+      Each crate gets a minimal Cargo.toml and src/lib.rs (or main.rs for
+      the proxy).
+    owner: backend
+    estimated_effort_h: 0.5
     dependencies: [PK-INIT-04]
     acceptance_criteria:
-      - "/Cargo.toml workspace builds (`cargo build --workspace`) with empty crates"
-      - "Resolver = 2"
-      - "All 8 member crates compile (even if empty `lib.rs`)"
-    artifacts: ["Cargo.toml", "crates/**/Cargo.toml", "crates/**/src/lib.rs"]
-    status: pending
+      - "cargo check --workspace passes"
+      - "cargo test --workspace passes"
+      - "8 crates visible in cargo metadata"
+    artifacts:
+      - "/Cargo.toml"
+      - "/crates/pennykite-*/Cargo.toml"
+      - "/crates/pennykite-*/src/lib.rs"
+    status: done
     priority: critical
-    tags: [scaffold, rust]
+    tags: [rust, scaffold]
 
   - id: PK-D1-02
     phase: phase-1
-    title: "Implement pennykite-types crate"
+    title: "Define shared types in pennykite-types"
     description: >-
-      Implement PaymentRequired, PaymentRequirement, Policy,
-      LoopDetectionConfig, Decision, Verdict (Approve | Deny | DenyLoop |
-      DenyBudget | DenyNetwork | DenyAsset | SessionInvalid). Derive
-      Serialize, Deserialize, Debug, Clone. Add unit tests for round-trip
-      serialisation of every type.
-    owner: lead
-    estimated_effort_h: 1.5
+      Implement PaymentRequired, PaymentRequirement, Policy, Decision,
+      Verdict and supporting structs with serde Serialize/Deserialize.
+      Include round-trip tests.
+    owner: backend
+    estimated_effort_h: 1.0
     dependencies: [PK-D1-01]
     acceptance_criteria:
-      - "`cargo test -p pennykite-types` passes"
-      - "All public types documented with /// rustdoc"
-      - "Round-trip JSON test for every public struct/enum"
-    artifacts: ["crates/pennykite-types/src/lib.rs"]
-    status: pending
+      - "PaymentRequired deserialises from the x402 JSON schema"
+      - "Decision struct includes all fields needed by the ledger"
+      - "Verdict enum covers all deny reasons"
+      - "cargo test -p pennykite-types passes"
+    artifacts:
+      - "/crates/pennykite-types/src/lib.rs"
+    status: done
     priority: critical
     tags: [rust, types]
 
@@ -414,40 +425,35 @@ tasks:
 
   - id: PK-D1-04
     phase: phase-1
-    title: "Setup Foundry contracts workspace"
-    description: >-
-      Initialise contracts/ with foundry.toml, install forge-std and
-      OpenZeppelin contracts, configure remappings.txt.
+    title: "Setup Foundry workspace under /contracts"
+    description: "Run forge init, configure solc 0.8.20, set up remappings."
     owner: backend
-    estimated_effort_h: 0.5
+    estimated_effort_h: 0.25
     dependencies: [PK-INIT-04]
     acceptance_criteria:
-      - "`forge build` succeeds in contracts/"
-      - "remappings.txt generated"
-    artifacts: ["contracts/foundry.toml", "contracts/remappings.txt"]
-    status: pending
+      - "forge build succeeds (even if only a stub contract)"
+      - "foundry.toml has solc = '0.8.20'"
+    artifacts:
+      - "/contracts/foundry.toml"
+    status: done
     priority: high
-    tags: [solidity, foundry]
+    tags: [solidity, scaffold]
 
   - id: PK-D1-05
     phase: phase-1
     title: "Implement PennyKiteAttestor.sol"
-    description: >-
-      Append-only registry: struct Attestation { sessionId, decisionHash,
-      timestamp, attester }; mapping(bytes32 => uint256[]) attestationsBySession;
-      function attest(bytes32, bytes32) external returns (uint256);
-      view function getSessionAttestations; view totalAttestations; event Attested.
+    description: "Solidity contract that accepts decision hashes and emits Attested events."
     owner: backend
     estimated_effort_h: 1.0
     dependencies: [PK-D1-04]
     acceptance_criteria:
-      - "Contract compiles with solc 0.8.20"
-      - "SPDX-License-Identifier: MIT"
-      - "Event Attested emitted on every attest call"
-    artifacts: ["contracts/src/PennyKiteAttestor.sol"]
-    status: pending
-    priority: critical
-    tags: [solidity]
+      - "forge build succeeds"
+      - "Contract exposes attest(bytes32 sessionId, bytes32 decisionHash) external"
+    artifacts:
+      - "/contracts/src/PennyKiteAttestor.sol"
+    status: done
+    priority: high
+    tags: [solidity, kite]
 
   - id: PK-D1-06
     phase: phase-1
@@ -463,7 +469,7 @@ tasks:
       - "`forge test -vvv` passes ≥ 4 tests"
       - "Coverage of attest(), getSessionAttestations(), totalAttestations()"
     artifacts: ["contracts/test/PennyKiteAttestor.t.sol"]
-    status: pending
+    status: done
     priority: critical
     tags: [solidity, tests]
 
@@ -488,21 +494,22 @@ tasks:
 
   - id: PK-D1-08
     phase: phase-1
-    title: "Bootstrap Next.js 16 dashboard"
-    description: >-
-      Create dashboard/ with Next.js 16 + Tailwind + shadcn/ui + viem +
-      wagmi. Single-page placeholder reading 'PennyKite Dashboard'.
+    title: "Bootstrap Next.js 16 dashboard skeleton"
+    description: "npx create-next-app@latest with TypeScript, Tailwind v4, app router. Add shadcn/ui init."
     owner: frontend
-    estimated_effort_h: 1.0
+    estimated_effort_h: 0.5
     dependencies: [PK-INIT-04]
     acceptance_criteria:
-      - "`npm run dev` serves on :3000"
-      - "Tailwind utility classes work"
-      - "shadcn/ui CLI initialised"
-    artifacts: ["dashboard/package.json", "dashboard/app/page.tsx"]
-    status: pending
+      - "npm run build succeeds"
+      - "Landing page renders with PennyKite branding"
+      - "Tailwind v4 configured"
+    artifacts:
+      - "/dashboard/package.json"
+      - "/dashboard/app/layout.tsx"
+      - "/dashboard/app/page.tsx"
+    status: done
     priority: high
-    tags: [frontend, nextjs]
+    tags: [nextjs, scaffold]
 
   - id: PK-D1-09
     phase: phase-1

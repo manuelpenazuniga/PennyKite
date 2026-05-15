@@ -1,0 +1,28 @@
+[package]
+name = "pennykite-proxy"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "pennykite-proxy"
+path = "src/main.rs"
+
+[dependencies]
+pennykite-types = { path = "../pennykite-types" }
+pennykite-budget = { path = "../pennykite-budget" }
+pennykite-detect = { path = "../pennykite-detect" }
+pennykite-cost = { path = "../pennykite-cost" }
+pennykite-ledger = { path = "../pennykite-ledger" }
+pennykite-providers = { path = "../pennykite-providers" }
+pennykite-kite = { path = "../pennykite-kite" }
+axum.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+reqwest.workspace = true
+url.workspace = true

@@ -1,0 +1,12 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+solc = "0.8.20"
+evm_version = "cancun"
+
+[rpc_endpoints]
+kite_testnet = "${KITE_RPC_URL}"
+
+[etherscan]
+kite_testnet = { key = "${ETHERSCAN_API_KEY}", url = "https://explorer.gokite.ai/api" }

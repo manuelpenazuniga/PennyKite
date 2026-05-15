@@ -1,0 +1,24 @@
+version: "1.0"
+name: "Consumer agent"
+
+session:
+  budget_usd: 2.00
+  per_request_cap_usd: 0.10
+  max_duration_minutes: 15
+
+loop_detection:
+  enabled: true
+  window_size: 5
+  similarity_threshold: 0.80
+  max_consecutive_similar: 2
+
+networks:
+  allowed:
+    - "eip155:84532"
+  assets:
+    - "USDC"
+
+kite_passport:
+  agent_address: "0x0000000000000000000000000000000000000000"
+  session_key: "0x0000000000000000000000000000000000000000"
+  attestation_frequency: final_only

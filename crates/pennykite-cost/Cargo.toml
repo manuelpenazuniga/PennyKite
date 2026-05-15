@@ -1,0 +1,9 @@
+[package]
+name = "pennykite-cost"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+pennykite-types = { path = "../pennykite-types" }
+thiserror.workspace = true

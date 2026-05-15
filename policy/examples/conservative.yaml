@@ -1,0 +1,26 @@
+version: "1.0"
+name: "Conservative trading agent"
+
+session:
+  budget_usd: 5.00
+  per_request_cap_usd: 0.50
+  max_duration_minutes: 30
+
+loop_detection:
+  enabled: true
+  window_size: 10
+  similarity_threshold: 0.85
+  max_consecutive_similar: 3
+
+networks:
+  allowed:
+    - "eip155:8453"
+    - "eip155:84532"
+  assets:
+    - "USDC"
+    - "PYUSD"
+
+kite_passport:
+  agent_address: "0x0000000000000000000000000000000000000000"
+  session_key: "0x0000000000000000000000000000000000000000"
+  attestation_frequency: every_event
