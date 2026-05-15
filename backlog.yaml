@@ -179,7 +179,7 @@ tasks:
       - "Every task has id, status, acceptance_criteria, dependencies"
       - "Tasks are atomic (≤ 4h estimated effort each, ideally)"
     artifacts: ["backlog.yaml"]
-    status: in_progress
+    status: done
     priority: critical
     tags: [planning]
 
@@ -198,7 +198,7 @@ tasks:
       - "Commit message follows conventional commits"
       - "git status is clean after push"
     artifacts: []
-    status: pending
+    status: done
     priority: critical
     tags: [git]
 
@@ -1356,7 +1356,7 @@ tasks:
     acceptance_criteria:
       - "/LICENSE present and matches MIT template"
     artifacts: ["LICENSE"]
-    status: pending
+    status: done
     priority: high
     tags: [legal]
 
@@ -1371,7 +1371,7 @@ tasks:
       - "/CHANGELOG.md exists"
       - "Follows https://keepachangelog.com format"
     artifacts: ["CHANGELOG.md"]
-    status: pending
+    status: done
     priority: medium
     tags: [docs]
 
@@ -1385,7 +1385,7 @@ tasks:
     acceptance_criteria:
       - "/CONTRIBUTING.md exists"
     artifacts: ["CONTRIBUTING.md"]
-    status: pending
+    status: done
     priority: low
     tags: [docs]
 
@@ -1399,7 +1399,7 @@ tasks:
     acceptance_criteria:
       - "Template appears on new PRs"
     artifacts: [".github/PULL_REQUEST_TEMPLATE.md"]
-    status: pending
+    status: done
     priority: low
     tags: [dx]
 
