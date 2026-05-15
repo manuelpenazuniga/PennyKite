@@ -1,0 +1,1426 @@
+# =============================================================================
+# PennyKite — Execution Backlog
+# -----------------------------------------------------------------------------
+# Machine-readable, atomic execution plan derived from PENNYKITE_ROADMAP_KITE.md.
+# Each task is self-contained enough to be picked up by an autonomous developer
+# agent (e.g. Sonnet 4.6) without re-reading the source roadmap.
+#
+# Conventions:
+#   id                  : "PK-<phase>-<index>" (stable, sortable).
+#   status              : pending | in_progress | blocked | done | cancelled.
+#   priority            : critical | high | medium | low.
+#   owner               : lead | backend | frontend | all (logical role,
+#                          maps to a single solo-builder if working alone).
+#   estimated_effort_h  : float, hours of focused work.
+#   dependencies        : list of task ids that MUST be done before starting.
+#   acceptance_criteria : list of objective, testable bullets.
+#   artifacts           : files / directories the task creates or modifies.
+#   references          : doc anchors and external URLs.
+#   tags                : free-form labels for filtering.
+# =============================================================================
+
+metadata:
+  project: PennyKite
+  version: "0.1.0"
+  hackathon:
+    name: "Kite AI Global Hackathon 2026"
+    organiser: "Encode Club"
+    submission_deadline: "2026-05-25"
+    finale: "2026-05-25T16:00:00+01:00"
+    primary_track: "Novel"
+    secondary_track: "Agentic Commerce"
+  goal: >-
+    Ship a public, MIT-licensed, end-to-end working demo of a pre-execution
+    budget guardian for AI agents that settles micropayments via x402 and
+    anchors decisions on Kite chain.
+  success_criteria:
+    - Public GitHub repo with reproducible quickstart
+    - Hosted demo (proxy + dashboard) on public URLs
+    - Smart contract deployed on Kite testnet (address documented)
+    - 2-5 minute demo video on YouTube
+    - Submission filed on Encode/Devpost before deadline
+  strategic_flags:
+    - id: SF-01
+      title: "Mirror PennyPrompt crate decomposition"
+      description: >-
+        The original roadmap lists only 2 Rust crates; PennyPrompt already
+        provides 12 specialised crates that map almost 1:1 to PennyKite's
+        needs (penny-budget, penny-detect, penny-cost, penny-ledger,
+        penny-providers, etc.). Tasks below adopt this richer split.
+      impact: positive
+    - id: SF-02
+      title: "TypeScript signing sidecar as Plan A for x402"
+      description: >-
+        EIP-3009 signing in Rust is the highest-risk task in the build.
+        A TS sidecar using @x402/client is offered as task PK-D2-07b that
+        can replace PK-D2-07 on Day 2 if Rust signing slips beyond 4h.
+      impact: risk_mitigation
+    - id: SF-03
+      title: "Dual-tag Novel + Agentic Commerce on submission"
+      description: >-
+        PennyKite literally fits the Agentic Commerce rubric. Submitting
+        primarily to Novel while listing Commerce as secondary maximises
+        prize-pool exposure with zero code change.
+      impact: positive
+    - id: SF-04
+      title: "Public docs path conflict resolved"
+      description: >-
+        The /docs directory is gitignored to keep private design materials
+        out of the public repo. Future public documentation (architecture,
+        kite-integration, x402-flow) lives under /documentation instead.
+      impact: hygiene
+  references:
+    project_definition: "docs/PENNYKITE_PROJECT_KITE.md (private)"
+    roadmap: "docs/PENNYKITE_ROADMAP_KITE.md (private)"
+    hackathon_brief: "docs/Kite_AI_Hackathon_EncodeClub.md (private)"
+    pennyprompt_reference: "resources/PennyPrompt (private)"
+    kite_docs: "https://docs.gokite.ai/"
+    x402_repo: "https://github.com/coinbase/x402"
+    x402_exact_evm_spec: "https://github.com/coinbase/x402/blob/main/specs/schemes/exact/scheme_exact_evm.md"
+
+# -----------------------------------------------------------------------------
+# Phases (labels only; tasks reference them via the `phase` field)
+# -----------------------------------------------------------------------------
+phases:
+  - id: phase-0
+    label: "Pre-arrangement"
+    window: "2026-05-15 → 2026-05-19"
+    description: "Background work executed in parallel with AgentTrust submission."
+  - id: phase-init
+    label: "Repo initialisation"
+    window: "2026-05-15"
+    description: ".gitignore, README, backlog, scaffolding placeholders."
+  - id: phase-1
+    label: "Day 1 — Scaffold + Kite + x402 prototype"
+    window: "2026-05-20"
+  - id: phase-2
+    label: "Day 2 — x402 parsing, signing, atomic ledger"
+    window: "2026-05-21"
+  - id: phase-3
+    label: "Day 3 — Loop detector, demo target, runaway agent"
+    window: "2026-05-22"
+  - id: phase-4
+    label: "Day 4 — Polish, hosting, video"
+    window: "2026-05-23"
+  - id: phase-5
+    label: "Day 5 — Buffer + writeup"
+    window: "2026-05-24"
+  - id: phase-6
+    label: "Day 6 — Submission + Finale"
+    window: "2026-05-25"
+  - id: phase-cross
+    label: "Cross-cutting (CI, DX, hygiene)"
+    window: "continuous"
+
+# -----------------------------------------------------------------------------
+# Tasks
+# -----------------------------------------------------------------------------
+tasks:
+
+  # =====================================================
+  # PHASE INIT — repo bootstrap (today)
+  # =====================================================
+  - id: PK-INIT-01
+    phase: phase-init
+    title: "Configure .gitignore"
+    description: >-
+      Author a comprehensive .gitignore that excludes secrets, build
+      artefacts (Rust target, Node, Python, Foundry), local databases,
+      OS noise, and explicitly the docs/ and resources/ directories
+      so private design docs and the PennyPrompt reference are kept out
+      of the public repo.
+    owner: lead
+    estimated_effort_h: 0.25
+    dependencies: []
+    acceptance_criteria:
+      - "/.gitignore exists at repo root"
+      - "Ignores: .env, target/, node_modules/, __pycache__/, contracts/out/, *.db, .DS_Store"
+      - "Explicitly ignores docs/ and resources/"
+      - "Whitelists .env.example via negation rule"
+    artifacts: [".gitignore"]
+    status: done
+    priority: critical
+    tags: [scaffold, hygiene]
+
+  - id: PK-INIT-02
+    phase: phase-init
+    title: "Author public README.md"
+    description: >-
+      Top-tier OSS README in English: badges, value proposition, problem
+      statement, architecture diagram, comparison table, quickstart in
+      three commands, project structure, configuration, SDK examples,
+      roadmap, contributing, licence, acknowledgements.
+    owner: lead
+    estimated_effort_h: 1.0
+    dependencies: [PK-INIT-01]
+    acceptance_criteria:
+      - "/README.md exists at repo root"
+      - "Includes badges (license, status, hackathon, track, stack)"
+      - "Includes ASCII architecture diagram"
+      - "Includes 3-command quickstart"
+      - "Strictly English"
+    artifacts: ["README.md"]
+    status: done
+    priority: critical
+    tags: [docs, marketing]
+
+  - id: PK-INIT-03
+    phase: phase-init
+    title: "Generate backlog.yaml"
+    description: >-
+      Translate the roadmap (PENNYKITE_ROADMAP_KITE.md) into a meticulous
+      machine-readable execution plan with atomic tasks, dependencies,
+      acceptance criteria and references — this very file.
+    owner: lead
+    estimated_effort_h: 1.5
+    dependencies: [PK-INIT-02]
+    acceptance_criteria:
+      - "/backlog.yaml exists at repo root"
+      - "Every task has id, status, acceptance_criteria, dependencies"
+      - "Tasks are atomic (≤ 4h estimated effort each, ideally)"
+    artifacts: ["backlog.yaml"]
+    status: in_progress
+    priority: critical
+    tags: [planning]
+
+  - id: PK-INIT-04
+    phase: phase-init
+    title: "Initial commit + push to main"
+    description: >-
+      Stage .gitignore, README.md and backlog.yaml. Commit with a clear
+      conventional message. Push to origin/main so CI scaffolding can be
+      added in subsequent commits.
+    owner: lead
+    estimated_effort_h: 0.1
+    dependencies: [PK-INIT-01, PK-INIT-02, PK-INIT-03]
+    acceptance_criteria:
+      - "origin/main contains .gitignore, README.md, backlog.yaml"
+      - "Commit message follows conventional commits"
+      - "git status is clean after push"
+    artifacts: []
+    status: pending
+    priority: critical
+    tags: [git]
+
+  # =====================================================
+  # PHASE 0 — Pre-arrangement (15-19 May)
+  # =====================================================
+  - id: PK-D0-01
+    phase: phase-0
+    title: "Register on Encode Club + join Kite AI Discord"
+    description: >-
+      Sign up on encodeclub.com, link the project's GitHub account, join
+      the Encode Discord, find the Kite AI hackathon channel and read
+      pinned posts.
+    owner: lead
+    estimated_effort_h: 0.5
+    dependencies: []
+    acceptance_criteria:
+      - "Encode account active and linked to GitHub"
+      - "Joined #kite-ai-hackathon (or equivalent) channel"
+      - "Read pinned announcements"
+    artifacts: []
+    status: pending
+    priority: high
+    tags: [admin]
+
+  - id: PK-D0-02
+    phase: phase-0
+    title: "Create test wallet and back up seed phrase"
+    description: >-
+      Create a fresh MetaMask (or rabby) wallet dedicated to PennyKite
+      testing. Save the seed phrase in 1Password / a hardware solution.
+      Never commit it.
+    owner: lead
+    estimated_effort_h: 0.25
+    dependencies: []
+    acceptance_criteria:
+      - "Wallet address documented (publicly OK; private key NOT in repo)"
+      - "Seed phrase stored in secure manager"
+    artifacts: []
+    status: pending
+    priority: high
+    tags: [security]
+
+  - id: PK-D0-03
+    phase: phase-0
+    title: "Fund test wallet on Kite testnet"
+    description: "Request Kite testnet tokens from the official faucet."
+    owner: lead
+    estimated_effort_h: 0.1
+    dependencies: [PK-D0-02]
+    acceptance_criteria:
+      - "Wallet has > 0 testnet KITE"
+      - "Verified via Kite block explorer"
+    references:
+      - "https://docs.gokite.ai/"
+    artifacts: []
+    status: pending
+    priority: high
+    tags: [setup, kite]
+
+  - id: PK-D0-04
+    phase: phase-0
+    title: "Fund test wallet on Base Sepolia (x402 fallback)"
+    description: "Request Base Sepolia ETH and USDC from public faucets to enable x402 settlement fallback."
+    owner: lead
+    estimated_effort_h: 0.1
+    dependencies: [PK-D0-02]
+    acceptance_criteria:
+      - "Wallet has > 0 Base Sepolia ETH"
+      - "Wallet has > 1 Base Sepolia USDC"
+    artifacts: []
+    status: pending
+    priority: high
+    tags: [setup, x402]
+
+  - id: PK-D0-05
+    phase: phase-0
+    title: "Read x402 README and exact-EVM spec end-to-end"
+    description: >-
+      Required reading before writing any signing code. Take notes on the
+      PAYMENT-REQUIRED header schema and the EIP-3009 transferWithAuthorization
+      structure used by the `exact` scheme on EVM.
+    owner: backend
+    estimated_effort_h: 1.5
+    dependencies: []
+    acceptance_criteria:
+      - "Notes file (private) summarising header fields and signing flow"
+      - "Test vectors identified for verifying our implementation"
+    references:
+      - "https://github.com/coinbase/x402/blob/main/README.md"
+      - "https://github.com/coinbase/x402/blob/main/specs/schemes/exact/scheme_exact_evm.md"
+    artifacts: []
+    status: pending
+    priority: critical
+    tags: [research, x402]
+
+  - id: PK-D0-06
+    phase: phase-0
+    title: "Read Kite Passport beginner setup guide"
+    description: "Walk through the Kite Passport quickstart and identify which contracts and RPC endpoints PennyKite must integrate with."
+    owner: backend
+    estimated_effort_h: 0.5
+    dependencies: []
+    acceptance_criteria:
+      - "List of relevant contract addresses (testnet) recorded"
+      - "RPC endpoint and chain id confirmed"
+    references:
+      - "https://docs.gokite.ai/kite-agent-passport/beginner-setup"
+    artifacts: []
+    status: pending
+    priority: critical
+    tags: [research, kite]
+
+  - id: PK-D0-07
+    phase: phase-0
+    title: "Run official x402 example locally (Express + TS client)"
+    description: >-
+      Clone coinbase/x402, run the Express middleware example, and have
+      the TypeScript client successfully pay $0.01 on Base Sepolia.
+      Capture a full PAYMENT-REQUIRED + PAYMENT-RESPONSE pair for use as
+      test fixtures in PK-D2-04.
+    owner: backend
+    estimated_effort_h: 1.0
+    dependencies: [PK-D0-04, PK-D0-05]
+    acceptance_criteria:
+      - "Local x402 example completes a paid request"
+      - "Header pair captured and saved as fixture (test data, NOT private keys)"
+    artifacts: []
+    status: pending
+    priority: critical
+    tags: [research, x402]
+
+  - id: PK-D0-08
+    phase: phase-0
+    title: "Decision: testnet vs mainnet for primary submission"
+    description: >-
+      Confirm the submission target network. Default: Kite testnet.
+      Reassess on Day 5 whether to additionally deploy to mainnet.
+    owner: lead
+    estimated_effort_h: 0.1
+    dependencies: [PK-D0-03, PK-D0-06]
+    acceptance_criteria:
+      - "Decision recorded in backlog notes"
+    artifacts: []
+    status: pending
+    priority: high
+    tags: [decision]
+
+  # =====================================================
+  # PHASE 1 — Day 1 (20 May): Scaffold + Kite + x402 prototype
+  # =====================================================
+  - id: PK-D1-01
+    phase: phase-1
+    title: "Initialise Cargo workspace with PennyPrompt-style crate split"
+    description: >-
+      Create the root /Cargo.toml as a workspace, with members:
+      pennykite-types, pennykite-budget, pennykite-detect, pennykite-cost,
+      pennykite-ledger, pennykite-providers, pennykite-kite, pennykite-proxy.
+      Add workspace.dependencies for serde, serde_json, tokio, tracing,
+      anyhow, chrono.
+    owner: lead
+    estimated_effort_h: 0.75
+    dependencies: [PK-INIT-04]
+    acceptance_criteria:
+      - "/Cargo.toml workspace builds (`cargo build --workspace`) with empty crates"
+      - "Resolver = 2"
+      - "All 8 member crates compile (even if empty `lib.rs`)"
+    artifacts: ["Cargo.toml", "crates/**/Cargo.toml", "crates/**/src/lib.rs"]
+    status: pending
+    priority: critical
+    tags: [scaffold, rust]
+
+  - id: PK-D1-02
+    phase: phase-1
+    title: "Implement pennykite-types crate"
+    description: >-
+      Implement PaymentRequired, PaymentRequirement, Policy,
+      LoopDetectionConfig, Decision, Verdict (Approve | Deny | DenyLoop |
+      DenyBudget | DenyNetwork | DenyAsset | SessionInvalid). Derive
+      Serialize, Deserialize, Debug, Clone. Add unit tests for round-trip
+      serialisation of every type.
+    owner: lead
+    estimated_effort_h: 1.5
+    dependencies: [PK-D1-01]
+    acceptance_criteria:
+      - "`cargo test -p pennykite-types` passes"
+      - "All public types documented with /// rustdoc"
+      - "Round-trip JSON test for every public struct/enum"
+    artifacts: ["crates/pennykite-types/src/lib.rs"]
+    status: pending
+    priority: critical
+    tags: [rust, types]
+
+  - id: PK-D1-03
+    phase: phase-1
+    title: "Bootstrap pennykite-proxy binary with axum"
+    description: >-
+      Create the binary crate pennykite-proxy with an axum router,
+      a /health GET endpoint returning {\"status\":\"ok\"}, structured
+      tracing init, and clap-based CLI flags --listen, --policy,
+      --upstream, --db.
+    owner: lead
+    estimated_effort_h: 1.5
+    dependencies: [PK-D1-01]
+    acceptance_criteria:
+      - "`cargo run -p pennykite-proxy -- --listen 127.0.0.1:8787` starts"
+      - "GET /health returns 200 with {\"status\":\"ok\"}"
+      - "tracing logs visible at INFO level"
+    artifacts: ["crates/pennykite-proxy/src/main.rs", "crates/pennykite-proxy/Cargo.toml"]
+    status: pending
+    priority: critical
+    tags: [rust, http]
+
+  - id: PK-D1-04
+    phase: phase-1
+    title: "Setup Foundry contracts workspace"
+    description: >-
+      Initialise contracts/ with foundry.toml, install forge-std and
+      OpenZeppelin contracts, configure remappings.txt.
+    owner: backend
+    estimated_effort_h: 0.5
+    dependencies: [PK-INIT-04]
+    acceptance_criteria:
+      - "`forge build` succeeds in contracts/"
+      - "remappings.txt generated"
+    artifacts: ["contracts/foundry.toml", "contracts/remappings.txt"]
+    status: pending
+    priority: high
+    tags: [solidity, foundry]
+
+  - id: PK-D1-05
+    phase: phase-1
+    title: "Implement PennyKiteAttestor.sol"
+    description: >-
+      Append-only registry: struct Attestation { sessionId, decisionHash,
+      timestamp, attester }; mapping(bytes32 => uint256[]) attestationsBySession;
+      function attest(bytes32, bytes32) external returns (uint256);
+      view function getSessionAttestations; view totalAttestations; event Attested.
+    owner: backend
+    estimated_effort_h: 1.0
+    dependencies: [PK-D1-04]
+    acceptance_criteria:
+      - "Contract compiles with solc 0.8.20"
+      - "SPDX-License-Identifier: MIT"
+      - "Event Attested emitted on every attest call"
+    artifacts: ["contracts/src/PennyKiteAttestor.sol"]
+    status: pending
+    priority: critical
+    tags: [solidity]
+
+  - id: PK-D1-06
+    phase: phase-1
+    title: "Foundry tests for PennyKiteAttestor"
+    description: >-
+      Tests covering: single attest stores event; multiple attestations
+      per session indexed correctly; totalAttestations monotonic; non-owner
+      can attest (permissionless design).
+    owner: backend
+    estimated_effort_h: 0.75
+    dependencies: [PK-D1-05]
+    acceptance_criteria:
+      - "`forge test -vvv` passes ≥ 4 tests"
+      - "Coverage of attest(), getSessionAttestations(), totalAttestations()"
+    artifacts: ["contracts/test/PennyKiteAttestor.t.sol"]
+    status: pending
+    priority: critical
+    tags: [solidity, tests]
+
+  - id: PK-D1-07
+    phase: phase-1
+    title: "Deploy PennyKiteAttestor to Kite testnet"
+    description: >-
+      Deploy via `forge create`. Save the deployed address as
+      PENNYKITE_ATTESTOR_ADDRESS in .env.example (placeholder) and in
+      README. Verify a transaction lands on Kite block explorer.
+    owner: backend
+    estimated_effort_h: 0.5
+    dependencies: [PK-D1-06, PK-D0-03]
+    acceptance_criteria:
+      - "Deployment tx visible on Kite testnet explorer"
+      - "Address documented in README"
+      - "Successful smoke-call to attest() from the same wallet"
+    artifacts: ["contracts/script/Deploy.s.sol", ".env.example"]
+    status: pending
+    priority: critical
+    tags: [solidity, kite, deploy]
+
+  - id: PK-D1-08
+    phase: phase-1
+    title: "Bootstrap Next.js 16 dashboard"
+    description: >-
+      Create dashboard/ with Next.js 16 + Tailwind + shadcn/ui + viem +
+      wagmi. Single-page placeholder reading 'PennyKite Dashboard'.
+    owner: frontend
+    estimated_effort_h: 1.0
+    dependencies: [PK-INIT-04]
+    acceptance_criteria:
+      - "`npm run dev` serves on :3000"
+      - "Tailwind utility classes work"
+      - "shadcn/ui CLI initialised"
+    artifacts: ["dashboard/package.json", "dashboard/app/page.tsx"]
+    status: pending
+    priority: high
+    tags: [frontend, nextjs]
+
+  - id: PK-D1-09
+    phase: phase-1
+    title: "Deploy dashboard preview to Vercel"
+    description: "Connect repo to Vercel, deploy a preview build, verify the placeholder loads at the preview URL."
+    owner: frontend
+    estimated_effort_h: 0.5
+    dependencies: [PK-D1-08]
+    acceptance_criteria:
+      - "Preview URL responds 200"
+      - "URL recorded in README badges or roadmap"
+    artifacts: []
+    status: pending
+    priority: medium
+    tags: [frontend, deploy]
+
+  - id: PK-D1-10
+    phase: phase-1
+    title: "Implement pennykite-ledger crate (atomic SQLite)"
+    description: >-
+      Port the ledger pattern from penny-ledger / penny-store in
+      PennyPrompt. Provide Ledger::new, try_reserve, reconcile,
+      record_decision. Use rusqlite with bundled feature for portability.
+      Use unchecked_transaction for atomicity.
+    owner: lead
+    estimated_effort_h: 2.0
+    dependencies: [PK-D1-02]
+    acceptance_criteria:
+      - "Schema migrations applied at startup (sessions, decisions tables)"
+      - "Tests with tempfile cover try_reserve approve, deny by budget, deny by per-request cap"
+      - "reconcile() refunds the difference when actual < estimated"
+    artifacts: ["crates/pennykite-ledger/src/lib.rs"]
+    status: pending
+    priority: critical
+    tags: [rust, ledger, sqlite]
+
+  - id: PK-D1-11
+    phase: phase-1
+    title: "Implement pennykite-kite client (RPC + attestations)"
+    description: >-
+      Wrapper around alloy / ethers. Methods: verify_session(session_key,
+      agent_passport) -> remaining_quota; attest(session_id, decision_hash,
+      wallet) -> tx_hash. Cache verify_session results with 5s TTL.
+    owner: backend
+    estimated_effort_h: 2.0
+    dependencies: [PK-D1-02, PK-D1-07]
+    acceptance_criteria:
+      - "Smoke test sends a hash to PennyKiteAttestor on Kite testnet"
+      - "Returns the transaction hash"
+      - "Cache verified by 2 consecutive verify_session calls within 5s producing 1 RPC call"
+    artifacts: ["crates/pennykite-kite/src/lib.rs"]
+    status: pending
+    priority: critical
+    tags: [rust, kite, web3]
+
+  - id: PK-D1-12
+    phase: phase-1
+    title: "Dashboard base components"
+    description: "Implement Stat, Badge, EventRow components. Wire to a /mock/decisions endpoint that returns hard-coded sample data."
+    owner: frontend
+    estimated_effort_h: 1.5
+    dependencies: [PK-D1-08]
+    acceptance_criteria:
+      - "Stat / Badge / EventRow render in Storybook or page"
+      - "Mock endpoint feeds the page; live update every 1s via setInterval"
+    artifacts: ["dashboard/components/**", "dashboard/app/api/mock/decisions/route.ts"]
+    status: pending
+    priority: medium
+    tags: [frontend]
+
+  - id: PK-D1-13
+    phase: phase-1
+    title: "Day 1 integration smoke test"
+    description: >-
+      Run the proxy, hit /health from a curl one-liner; run the dashboard,
+      see mock data; run forge test for the attestor. Commit + push.
+      Retro: log any blockers in backlog.notes.
+    owner: all
+    estimated_effort_h: 0.75
+    dependencies: [PK-D1-03, PK-D1-06, PK-D1-12]
+    acceptance_criteria:
+      - "All three components run on localhost without crashing"
+      - "Day 1 retro committed in backlog or PR description"
+    artifacts: []
+    status: pending
+    priority: high
+    tags: [integration]
+
+  # =====================================================
+  # PHASE 2 — Day 2 (21 May): x402 parsing + signing + atomic ledger
+  # =====================================================
+  - id: PK-D2-01
+    phase: phase-2
+    title: "Implement x402.rs parse_payment_required"
+    description: "Base64-decode + JSON-parse the PAYMENT-REQUIRED header into PaymentRequired."
+    owner: backend
+    estimated_effort_h: 0.5
+    dependencies: [PK-D1-02]
+    acceptance_criteria:
+      - "Tests pass against captured fixture from PK-D0-07"
+      - "Returns Result<PaymentRequired> with anyhow context"
+    artifacts: ["crates/pennykite-providers/src/x402.rs"]
+    status: pending
+    priority: critical
+    tags: [rust, x402]
+
+  - id: PK-D2-02
+    phase: phase-2
+    title: "Implement x402 amount_to_usd helper"
+    description: "Convert smallest-unit string amount + decimals to f64 USD."
+    owner: backend
+    estimated_effort_h: 0.25
+    dependencies: [PK-D2-01]
+    acceptance_criteria:
+      - "amount_to_usd(\"50000\", 6) == 0.05"
+      - "amount_to_usd(\"1000000\", 6) == 1.0"
+      - "Returns error on non-numeric input"
+    artifacts: ["crates/pennykite-providers/src/x402.rs"]
+    status: pending
+    priority: high
+    tags: [rust, x402]
+
+  - id: PK-D2-03
+    phase: phase-2
+    title: "Implement x402 select_requirement filter"
+    description: "Pick the first PaymentRequirement whose network and asset are both allowed by policy."
+    owner: backend
+    estimated_effort_h: 0.5
+    dependencies: [PK-D2-01]
+    acceptance_criteria:
+      - "Returns Some(&req) when match exists"
+      - "Returns None when no overlap"
+      - "Tests cover empty inputs"
+    artifacts: ["crates/pennykite-providers/src/x402.rs"]
+    status: pending
+    priority: high
+    tags: [rust, x402]
+
+  - id: PK-D2-04
+    phase: phase-2
+    title: "x402 parser fixtures: 5+ real PAYMENT-REQUIRED headers"
+    description: "Capture and commit (without secrets) at least 5 real headers covering Base, Base Sepolia, Polygon, Arbitrum, and a Kite testnet variant if available."
+    owner: backend
+    estimated_effort_h: 0.75
+    dependencies: [PK-D0-07]
+    acceptance_criteria:
+      - "tests/fixtures/x402/*.json committed"
+      - "Parser tests exercise every fixture"
+    artifacts: ["crates/pennykite-providers/tests/fixtures/**"]
+    status: pending
+    priority: high
+    tags: [tests, x402]
+
+  - id: PK-D2-05
+    phase: phase-2
+    title: "Implement pennykite-config policy YAML loader"
+    description: "Loader that reads policy YAML, validates against the Policy schema, and returns typed errors with file/line context."
+    owner: lead
+    estimated_effort_h: 1.0
+    dependencies: [PK-D1-02]
+    acceptance_criteria:
+      - "Loads policy/examples/conservative.yaml without error"
+      - "Rejects negative budgets / invalid CAIP-2 networks"
+      - "≥ 3 unit tests"
+    artifacts: ["crates/pennykite-providers/src/policy.rs", "policy/examples/conservative.yaml"]
+    status: pending
+    priority: critical
+    tags: [rust, policy]
+
+  - id: PK-D2-06
+    phase: phase-2
+    title: "Author 3 policy presets"
+    description: "conservative.yaml (default), trading-aggressive.yaml, consumer.yaml. Each tuned with realistic budgets and loop thresholds."
+    owner: lead
+    estimated_effort_h: 0.5
+    dependencies: [PK-D2-05]
+    acceptance_criteria:
+      - "policy/examples/{conservative,trading-aggressive,consumer}.yaml exist"
+      - "All three load successfully via the policy loader"
+    artifacts: ["policy/examples/*.yaml"]
+    status: pending
+    priority: medium
+    tags: [policy]
+
+  - id: PK-D2-07
+    phase: phase-2
+    title: "Implement EIP-3009 PAYMENT-SIGNATURE builder (Rust)"
+    description: >-
+      Highest-risk task of the build. Use alloy-signer to produce a valid
+      EIP-712 TransferWithAuthorization signature for USDC. Validate
+      against a known test vector from the x402 spec. If this slips
+      beyond 4h, switch to the TS sidecar (see PK-D2-07b).
+    owner: backend
+    estimated_effort_h: 4.0
+    dependencies: [PK-D2-04, PK-D0-05]
+    acceptance_criteria:
+      - "Test reproduces a known PAYMENT-SIGNATURE byte-for-byte"
+      - "Errors are typed (e.g. SigningError::Domain, ::Authorization)"
+    artifacts: ["crates/pennykite-providers/src/sign.rs"]
+    status: pending
+    priority: critical
+    tags: [rust, x402, crypto]
+    risk: high
+
+  - id: PK-D2-07b
+    phase: phase-2
+    title: "[Plan B] TypeScript signing sidecar"
+    description: >-
+      Stand up a small Node service (sdk/typescript/sign-sidecar) that
+      uses @x402/client to produce PAYMENT-SIGNATURE. Proxy calls it via
+      HTTP loopback. Activate only if PK-D2-07 exceeds budget.
+    owner: backend
+    estimated_effort_h: 2.0
+    dependencies: [PK-D2-04]
+    acceptance_criteria:
+      - "Sidecar exposes POST /sign returning a valid signature"
+      - "Proxy can call sidecar over loopback"
+    artifacts: ["sdk/typescript/sign-sidecar/**"]
+    status: pending
+    priority: medium
+    tags: [typescript, x402, contingency]
+    activation_condition: "PK-D2-07 estimated_effort_h exceeded by > 1h"
+
+  - id: PK-D2-08
+    phase: phase-2
+    title: "Wire proxy handler: forward + intercept 402 + decide"
+    description: >-
+      Implement POST /proxy/* (and GET /proxy/*) that: (1) forwards
+      original request, (2) on upstream 402 parses PAYMENT-REQUIRED,
+      (3) evaluates ledger.try_reserve + cost cap, (4) if approved attaches
+      PAYMENT-SIGNATURE and replays, (5) otherwise returns 402 with
+      PennyKite reason JSON body.
+    owner: lead
+    estimated_effort_h: 3.0
+    dependencies: [PK-D1-03, PK-D1-10, PK-D2-01, PK-D2-05, PK-D2-07]
+    acceptance_criteria:
+      - "Approved path returns upstream's 200 + PAYMENT-RESPONSE"
+      - "Denied path returns 402 with body { reason, verdict }"
+      - "Integration test against a stub upstream"
+    artifacts: ["crates/pennykite-proxy/src/handler.rs"]
+    status: pending
+    priority: critical
+    tags: [rust, http, x402]
+
+  - id: PK-D2-09
+    phase: phase-2
+    title: "Anchor decisions on Kite via attest()"
+    description: "After every Decision, hash it (SHA3-256 over canonical JSON) and call kite.attest(). Persist tx hash on the Decision row."
+    owner: backend
+    estimated_effort_h: 1.0
+    dependencies: [PK-D1-11, PK-D2-08]
+    acceptance_criteria:
+      - "Each row in `decisions` has a non-null kite_attestation_tx in success path"
+      - "Failed attestations do NOT block the proxy response (best-effort, logged)"
+    artifacts: ["crates/pennykite-proxy/src/handler.rs"]
+    status: pending
+    priority: critical
+    tags: [rust, kite]
+
+  - id: PK-D2-10
+    phase: phase-2
+    title: "Concurrency test for ledger try_reserve"
+    description: "Spawn N tokio tasks racing to reserve from the same session with budget = 1 × cost. Exactly one must succeed."
+    owner: lead
+    estimated_effort_h: 0.5
+    dependencies: [PK-D1-10]
+    acceptance_criteria:
+      - "Test passes with 64 concurrent tasks"
+      - "Exactly one APPROVE, rest DENY"
+    artifacts: ["crates/pennykite-ledger/tests/concurrency.rs"]
+    status: pending
+    priority: high
+    tags: [rust, tests]
+
+  - id: PK-D2-11
+    phase: phase-2
+    title: "Dashboard live decisions feed"
+    description: "Replace mock endpoint with real fetch from pennykite-proxy event API. Polling 1s; show approve / deny / pending."
+    owner: frontend
+    estimated_effort_h: 1.5
+    dependencies: [PK-D1-12, PK-D2-08]
+    acceptance_criteria:
+      - "Real decisions appear within 1.5s of proxy call"
+      - "Empty / loading / error states handled"
+    artifacts: ["dashboard/app/page.tsx"]
+    status: pending
+    priority: high
+    tags: [frontend]
+
+  - id: PK-D2-12
+    phase: phase-2
+    title: "Dashboard /sessions/[id] detail page"
+    description: "Per-session detail: budget remaining bar, decision timeline, link to Kite explorer for each attestation."
+    owner: frontend
+    estimated_effort_h: 1.5
+    dependencies: [PK-D2-11]
+    acceptance_criteria:
+      - "Route /sessions/[id] renders for any valid id"
+      - "Each row links to https://explorer.gokite.ai/tx/<hash>"
+    artifacts: ["dashboard/app/sessions/[id]/page.tsx"]
+    status: pending
+    priority: high
+    tags: [frontend]
+
+  - id: PK-D2-13
+    phase: phase-2
+    title: "Day 2 end-to-end milestone test"
+    description: >-
+      Run a real x402 request through the proxy, observe APPROVE and
+      a successful PAYMENT-RESPONSE on Base Sepolia, plus a Kite
+      attestation tx. Capture screenshot for video assets.
+    owner: all
+    estimated_effort_h: 1.0
+    dependencies: [PK-D2-08, PK-D2-09, PK-D2-12]
+    acceptance_criteria:
+      - "End-to-end flow succeeds twice in a row"
+      - "Screenshots committed under documentation/screenshots/"
+    artifacts: []
+    status: pending
+    priority: critical
+    tags: [integration]
+
+  # =====================================================
+  # PHASE 3 — Day 3 (22 May): loop detector + demo + agent
+  # =====================================================
+  - id: PK-D3-01
+    phase: phase-3
+    title: "Implement pennykite-detect (loop detector)"
+    description: "Sliding-window fingerprint detector with config { window_size, similarity_threshold, max_consecutive }. Exact-match on (method, host, path, body_hash) for v0.1."
+    owner: lead
+    estimated_effort_h: 1.5
+    dependencies: [PK-D1-02]
+    acceptance_criteria:
+      - "Tests: 5 identical requests trigger loop=true at the 4th"
+      - "Different bodies do not trigger"
+      - "Window correctly evicts oldest entries"
+    artifacts: ["crates/pennykite-detect/src/lib.rs"]
+    status: pending
+    priority: critical
+    tags: [rust, detection]
+
+  - id: PK-D3-02
+    phase: phase-3
+    title: "Wire loop detector into proxy with DENY_LOOP verdict"
+    description: "Each request observed. If detector returns true, proxy short-circuits with verdict DenyLoop, records ledger entry, attests on chain."
+    owner: lead
+    estimated_effort_h: 0.75
+    dependencies: [PK-D3-01, PK-D2-08]
+    acceptance_criteria:
+      - "DenyLoop visible in dashboard with red badge"
+      - "Attestation tx recorded for blocked decision"
+    artifacts: ["crates/pennykite-proxy/src/handler.rs"]
+    status: pending
+    priority: critical
+    tags: [rust]
+
+  - id: PK-D3-03
+    phase: phase-3
+    title: "Demo target API (Express + x402 middleware)"
+    description: >-
+      Implement demo/target-api/server.js with @x402/express middleware
+      gating /predict/:matchId at $0.05/call. PAY_TO and FACILITATOR
+      configurable via env. README in demo/target-api describing
+      run instructions.
+    owner: backend
+    estimated_effort_h: 1.0
+    dependencies: [PK-D0-07]
+    acceptance_criteria:
+      - "GET /predict/x without payment returns 402 with PAYMENT-REQUIRED"
+      - "GET with valid PAYMENT-SIGNATURE returns 200 with prediction JSON"
+    artifacts: ["demo/target-api/server.js", "demo/target-api/package.json", "demo/target-api/README.md"]
+    status: pending
+    priority: critical
+    tags: [demo, node]
+
+  - id: PK-D3-04
+    phase: phase-3
+    title: "Runaway agent script (unprotected + protected modes)"
+    description: >-
+      demo/runaway-agent/agent.py with two modes: unprotected (talks to
+      target API directly), protected (talks via PennyKite proxy).
+      Pretty-prints each call result. Supports CLI args mode + session_id.
+    owner: backend
+    estimated_effort_h: 1.0
+    dependencies: [PK-D3-03, PK-D3-02]
+    acceptance_criteria:
+      - "`python3 agent.py unprotected` prints calls and accumulating spend"
+      - "`python3 agent.py protected` stops after BLOCKED message"
+    artifacts: ["demo/runaway-agent/agent.py", "demo/runaway-agent/requirements.txt"]
+    status: pending
+    priority: critical
+    tags: [demo, python]
+
+  - id: PK-D3-05
+    phase: phase-3
+    title: "Dashboard kill-switch page"
+    description: "/kill-switch lists active sessions with a Pause button. Click triggers an API call that revokes the Kite session key (mock fallback if real revocation not implemented yet)."
+    owner: frontend
+    estimated_effort_h: 1.5
+    dependencies: [PK-D2-12]
+    acceptance_criteria:
+      - "Page lists sessions sourced from proxy"
+      - "Pause button transitions session to status=paused in ledger"
+    artifacts: ["dashboard/app/kill-switch/page.tsx"]
+    status: pending
+    priority: high
+    tags: [frontend]
+
+  - id: PK-D3-06
+    phase: phase-3
+    title: "Kill-switch backend endpoint in proxy"
+    description: "POST /sessions/{id}/pause that flips ledger status to paused and (best-effort) revokes the Kite Passport session key."
+    owner: backend
+    estimated_effort_h: 1.0
+    dependencies: [PK-D3-05]
+    acceptance_criteria:
+      - "After pause, every subsequent try_reserve denies with reason 'session is paused'"
+      - "Proxy responds 202 even if on-chain revocation is async"
+    artifacts: ["crates/pennykite-proxy/src/handler.rs"]
+    status: pending
+    priority: high
+    tags: [rust]
+
+  - id: PK-D3-07
+    phase: phase-3
+    title: "One-command demo script"
+    description: >-
+      demo/run-demo.sh boots target API, proxy, dashboard; runs
+      unprotected scenario; pauses for ENTER; runs protected scenario;
+      prints final summary. Uses trap to clean up child processes.
+    owner: lead
+    estimated_effort_h: 1.0
+    dependencies: [PK-D3-04, PK-D2-13]
+    acceptance_criteria:
+      - "`./demo/run-demo.sh` works on a clean macOS / Linux"
+      - "Cleanup leaves no zombie processes after Ctrl+C"
+    artifacts: ["demo/run-demo.sh"]
+    status: pending
+    priority: critical
+    tags: [demo, scripts]
+
+  - id: PK-D3-08
+    phase: phase-3
+    title: "Python SDK convenience wrapper"
+    description: >-
+      sdk/python/pennykite/{__init__.py, client.py, exceptions.py}.
+      PennyKiteClient supports context manager, .get/.post mirroring
+      httpx, raises PennyKiteBudgetExceeded / PennyKiteLoopDetected on 402.
+    owner: backend
+    estimated_effort_h: 1.0
+    dependencies: [PK-D3-07]
+    acceptance_criteria:
+      - "Importable: `from pennykite import PennyKiteClient`"
+      - "`with PennyKiteClient(session_id=...)` works"
+      - "Raises typed exceptions on PennyKite-originated 402"
+    artifacts: ["sdk/python/pennykite/**", "sdk/python/pyproject.toml"]
+    status: pending
+    priority: medium
+    tags: [python, sdk]
+
+  - id: PK-D3-09
+    phase: phase-3
+    title: "Dashboard polish for demo"
+    description: "Animate row entries, strong red on DENY, sticky header, real-time wallet balance widget that visibly drops in unprotected mode."
+    owner: frontend
+    estimated_effort_h: 2.0
+    dependencies: [PK-D2-12]
+    acceptance_criteria:
+      - "Row enter animation < 300ms"
+      - "Balance widget polls every 500ms"
+      - "Dashboard usable on a 1080p screen capture"
+    artifacts: ["dashboard/components/**", "dashboard/app/page.tsx"]
+    status: pending
+    priority: high
+    tags: [frontend, ux]
+
+  - id: PK-D3-10
+    phase: phase-3
+    title: "Demo dry-run + screen recording"
+    description: "Record the full demo end-to-end (≥ 2 takes). Identify weak spots. Iterate calibration of similarity_threshold / max_consecutive."
+    owner: all
+    estimated_effort_h: 2.0
+    dependencies: [PK-D3-07, PK-D3-09]
+    acceptance_criteria:
+      - "Recording saved (private, NOT committed to repo)"
+      - "Notes on weak spots committed under documentation/notes/demo-dry-run.md"
+    artifacts: ["documentation/notes/demo-dry-run.md"]
+    status: pending
+    priority: critical
+    tags: [demo, video]
+
+  # =====================================================
+  # PHASE 4 — Day 4 (23 May): polish + hosting + video
+  # =====================================================
+  - id: PK-D4-01
+    phase: phase-4
+    title: "Bug fixes from Day 3 dry-run"
+    description: "NO new features. Triage the demo notes; fix the highest-impact issues only."
+    owner: lead
+    estimated_effort_h: 2.0
+    dependencies: [PK-D3-10]
+    acceptance_criteria:
+      - "Top 3 issues from dry-run resolved"
+      - "Demo runs without errors twice in a row"
+    artifacts: []
+    status: pending
+    priority: critical
+    tags: [polish]
+
+  - id: PK-D4-02
+    phase: phase-4
+    title: "Host PennyKite proxy publicly (Fly.io or Railway)"
+    description: >-
+      Containerise pennykite-proxy (Dockerfile under crates/pennykite-proxy/),
+      deploy to Fly.io or Railway, configure production env vars, expose
+      a public HTTPS endpoint.
+    owner: backend
+    estimated_effort_h: 2.5
+    dependencies: [PK-D4-01]
+    acceptance_criteria:
+      - "GET https://<public>/health returns 200"
+      - "Smoke test from local agent against public proxy succeeds"
+      - "Deploy URL in README"
+    artifacts: ["crates/pennykite-proxy/Dockerfile", "fly.toml or railway.json"]
+    status: pending
+    priority: critical
+    tags: [hosting, deploy]
+
+  - id: PK-D4-03
+    phase: phase-4
+    title: "Deploy dashboard to Vercel production"
+    description: "Promote the Vercel project to production, attach a clean URL (custom domain optional)."
+    owner: frontend
+    estimated_effort_h: 0.5
+    dependencies: [PK-D4-01]
+    acceptance_criteria:
+      - "https://<vercel-prod>/ responds 200"
+      - "Connects to public proxy URL"
+    artifacts: []
+    status: pending
+    priority: critical
+    tags: [hosting, deploy]
+
+  - id: PK-D4-04
+    phase: phase-4
+    title: "Final README pass with screenshots"
+    description: "Embed dashboard screenshots, update hosted-demo links, finalise the comparison table, ensure quickstart still works after Day 4 changes."
+    owner: lead
+    estimated_effort_h: 1.5
+    dependencies: [PK-D4-02, PK-D4-03]
+    acceptance_criteria:
+      - "README links validated (no 404)"
+      - "Screenshots <500KB each, stored in documentation/img/"
+    artifacts: ["README.md", "documentation/img/**"]
+    status: pending
+    priority: high
+    tags: [docs, marketing]
+
+  - id: PK-D4-05
+    phase: phase-4
+    title: "Final demo recording (production-quality)"
+    description: "Re-record the demo against the hosted environment. 1080p, 30fps, clean audio, ≤ 5 minutes."
+    owner: all
+    estimated_effort_h: 2.5
+    dependencies: [PK-D4-02, PK-D4-03]
+    acceptance_criteria:
+      - "Best take selected and exported"
+      - "Backups of raw takes kept locally"
+    artifacts: []
+    status: pending
+    priority: critical
+    tags: [video]
+
+  - id: PK-D4-06
+    phase: phase-4
+    title: "Edit + voiceover + subtitles + YouTube upload"
+    description: "Edit in CapCut/DaVinci. English voiceover. Burned-in subtitles. Upload as unlisted YouTube video. Title and description ready for submission."
+    owner: lead
+    estimated_effort_h: 3.0
+    dependencies: [PK-D4-05]
+    acceptance_criteria:
+      - "Video duration 2-5 minutes"
+      - "YouTube link saved in submission notes"
+      - "Subtitles enabled / SRT attached"
+    artifacts: []
+    status: pending
+    priority: critical
+    tags: [video]
+
+  - id: PK-D4-07
+    phase: phase-4
+    title: "Public docs: architecture, kite-integration, x402-flow"
+    description: >-
+      Write three Markdown files under /documentation (NOT /docs because
+      /docs is gitignored): architecture.md, kite-integration.md,
+      x402-flow.md. Mermaid diagrams where helpful.
+    owner: backend
+    estimated_effort_h: 2.0
+    dependencies: [PK-D4-01]
+    acceptance_criteria:
+      - "documentation/architecture.md ≥ 600 words"
+      - "documentation/kite-integration.md ≥ 400 words with code snippets"
+      - "documentation/x402-flow.md ≥ 400 words with sequence diagram"
+    artifacts: ["documentation/*.md"]
+    status: pending
+    priority: high
+    tags: [docs]
+
+  - id: PK-D4-08
+    phase: phase-4
+    title: "Cover image + slide deck"
+    description: "1280x720 cover image and 5-8 slide PDF deck for submission."
+    owner: frontend
+    estimated_effort_h: 2.0
+    dependencies: [PK-D4-04]
+    acceptance_criteria:
+      - "documentation/img/cover.png exists, 1280x720"
+      - "documentation/slides/pennykite.pdf exists"
+    artifacts: ["documentation/img/cover.png", "documentation/slides/pennykite.pdf"]
+    status: pending
+    priority: high
+    tags: [marketing]
+
+  - id: PK-D4-09
+    phase: phase-4
+    title: "Devpost / Encode submission dry-run"
+    description: "Fill every field in the submission form WITHOUT submitting. Validate every link."
+    owner: lead
+    estimated_effort_h: 0.75
+    dependencies: [PK-D4-04, PK-D4-06, PK-D4-08]
+    acceptance_criteria:
+      - "Form filled, draft saved"
+      - "All external links return 200"
+    artifacts: []
+    status: pending
+    priority: critical
+    tags: [submission]
+
+  # =====================================================
+  # PHASE 5 — Day 5 (24 May): buffer + writeup
+  # =====================================================
+  - id: PK-D5-01
+    phase: phase-5
+    title: "Clean-machine smoke test"
+    description: "Have a teammate (or a fresh VM) clone the repo and run `./demo/run-demo.sh`. Fix any onboarding friction surfaced."
+    owner: all
+    estimated_effort_h: 2.0
+    dependencies: [PK-D4-09]
+    acceptance_criteria:
+      - "Demo runs on clean machine without manual intervention beyond filling .env"
+      - "Onboarding friction notes captured and addressed"
+    artifacts: []
+    status: pending
+    priority: critical
+    tags: [qa]
+
+  - id: PK-D5-02
+    phase: phase-5
+    title: "Writeup (1000-1500 words)"
+    description: >-
+      Compose the long-form Encode submission writeup following the
+      structure in PROJECT §5.3: agentic economy framing, unsolved fail
+      mode, architecture, why Kite, what we built, roadmap.
+    owner: lead
+    estimated_effort_h: 2.5
+    dependencies: [PK-D5-01]
+    acceptance_criteria:
+      - "Word count between 1000 and 1500"
+      - "Writeup pasted into Devpost draft and previewed"
+    artifacts: ["documentation/submission/writeup.md"]
+    status: pending
+    priority: critical
+    tags: [submission, marketing]
+
+  - id: PK-D5-03
+    phase: phase-5
+    title: "Bibliography + link validation"
+    description: "Compile a list of references (Kite docs, x402 spec, Coinbase facilitator, prior art). Validate every URL."
+    owner: lead
+    estimated_effort_h: 0.5
+    dependencies: [PK-D5-02]
+    acceptance_criteria:
+      - "documentation/submission/bibliography.md exists"
+      - "Every URL returns 200"
+    artifacts: ["documentation/submission/bibliography.md"]
+    status: pending
+    priority: medium
+    tags: [submission]
+
+  - id: PK-D5-04
+    phase: phase-5
+    title: "Slide deck + README polish from non-developer feedback"
+    description: "Run a quick walkthrough with a non-developer. Adjust copy where they get lost."
+    owner: lead
+    estimated_effort_h: 1.0
+    dependencies: [PK-D5-02, PK-D4-08]
+    acceptance_criteria:
+      - "README opening passes the non-developer test"
+      - "Slide deck adjusted accordingly"
+    artifacts: []
+    status: pending
+    priority: medium
+    tags: [marketing]
+
+  # =====================================================
+  # PHASE 6 — Day 6 (25 May): submission + finale
+  # =====================================================
+  - id: PK-D6-01
+    phase: phase-6
+    title: "Final smoke test (hosted demo + dashboard)"
+    description: "Touch the public proxy and dashboard one more time. Fix or hide any anomaly before recording-day pressure starts."
+    owner: all
+    estimated_effort_h: 1.0
+    dependencies: [PK-D5-01]
+    acceptance_criteria:
+      - "Hosted demo works in a private window"
+      - "No console errors in dashboard"
+    artifacts: []
+    status: pending
+    priority: critical
+    tags: [qa]
+
+  - id: PK-D6-02
+    phase: phase-6
+    title: "Final asset pass"
+    description: "Verify cover image, video, slide deck, README, repo URL, demo URL, attestor address, bibliography."
+    owner: lead
+    estimated_effort_h: 0.75
+    dependencies: [PK-D6-01]
+    acceptance_criteria:
+      - "Asset checklist all green"
+    artifacts: []
+    status: pending
+    priority: critical
+    tags: [submission]
+
+  - id: PK-D6-03
+    phase: phase-6
+    title: "SUBMIT to Encode/Devpost"
+    description: "Hit submit. Do not wait for the last 30 minutes."
+    owner: lead
+    estimated_effort_h: 0.5
+    dependencies: [PK-D6-02]
+    acceptance_criteria:
+      - "Submission visible on Devpost project page"
+      - "Confirmation email received"
+    artifacts: []
+    status: pending
+    priority: critical
+    tags: [submission]
+
+  - id: PK-D6-04
+    phase: phase-6
+    title: "Verify submission visibility + run public links"
+    description: "Open the submission as a logged-out visitor. Verify everything renders."
+    owner: lead
+    estimated_effort_h: 0.5
+    dependencies: [PK-D6-03]
+    acceptance_criteria:
+      - "Logged-out submission page shows correct content"
+      - "All public links work"
+    artifacts: []
+    status: pending
+    priority: critical
+    tags: [submission]
+
+  - id: PK-D6-05
+    phase: phase-6
+    title: "Attend Kite AI Finale event"
+    description: "Be present on Zoom/streaming for the 4:00 PM GMT+1 finale. Available for Q&A."
+    owner: lead
+    estimated_effort_h: 1.5
+    dependencies: [PK-D6-03]
+    acceptance_criteria:
+      - "Attendance confirmed"
+    artifacts: []
+    status: pending
+    priority: high
+    tags: [event]
+
+  # =====================================================
+  # PHASE CROSS — CI / DX / hygiene
+  # =====================================================
+  - id: PK-CI-01
+    phase: phase-cross
+    title: "GitHub Actions: cargo build + test workflow"
+    description: ".github/workflows/rust.yml runs `cargo fmt --check`, `cargo clippy -D warnings`, `cargo test --workspace`."
+    owner: lead
+    estimated_effort_h: 1.0
+    dependencies: [PK-D1-01]
+    acceptance_criteria:
+      - "Workflow file exists and is green on main"
+      - "Caching configured for ~/.cargo and target/"
+    artifacts: [".github/workflows/rust.yml"]
+    status: pending
+    priority: high
+    tags: [ci]
+
+  - id: PK-CI-02
+    phase: phase-cross
+    title: "GitHub Actions: forge test workflow"
+    description: ".github/workflows/contracts.yml runs `forge build` and `forge test -vvv` in contracts/."
+    owner: backend
+    estimated_effort_h: 0.75
+    dependencies: [PK-D1-04]
+    acceptance_criteria:
+      - "Workflow green after PennyKiteAttestor lands"
+    artifacts: [".github/workflows/contracts.yml"]
+    status: pending
+    priority: high
+    tags: [ci]
+
+  - id: PK-CI-03
+    phase: phase-cross
+    title: "GitHub Actions: dashboard lint + build"
+    description: ".github/workflows/dashboard.yml runs `npm ci`, `npm run lint`, `npm run build`."
+    owner: frontend
+    estimated_effort_h: 0.5
+    dependencies: [PK-D1-08]
+    acceptance_criteria:
+      - "Workflow green on main"
+    artifacts: [".github/workflows/dashboard.yml"]
+    status: pending
+    priority: medium
+    tags: [ci]
+
+  - id: PK-CI-04
+    phase: phase-cross
+    title: ".env.example with all required keys"
+    description: >-
+      Comprehensive .env.example listing every env var used by the proxy,
+      contracts, and dashboard. Comments explaining each.
+    owner: lead
+    estimated_effort_h: 0.5
+    dependencies: [PK-D1-07]
+    acceptance_criteria:
+      - "/.env.example committed"
+      - "Includes KITE_RPC_URL, KITE_CHAIN_ID, KITE_PRIVATE_KEY, SESSION_KEY, PENNYKITE_ATTESTOR_ADDRESS, PAY_TO, FACILITATOR_URL"
+    artifacts: [".env.example"]
+    status: pending
+    priority: high
+    tags: [dx]
+
+  - id: PK-CI-05
+    phase: phase-cross
+    title: "LICENSE (MIT) at repo root"
+    description: "Add the standard MIT licence file."
+    owner: lead
+    estimated_effort_h: 0.1
+    dependencies: [PK-INIT-04]
+    acceptance_criteria:
+      - "/LICENSE present and matches MIT template"
+    artifacts: ["LICENSE"]
+    status: pending
+    priority: high
+    tags: [legal]
+
+  - id: PK-CI-06
+    phase: phase-cross
+    title: "CHANGELOG.md (Keep a Changelog format)"
+    description: "Initialise CHANGELOG.md with [Unreleased] and [0.1.0] sections. Maintain as we go."
+    owner: lead
+    estimated_effort_h: 0.5
+    dependencies: [PK-INIT-04]
+    acceptance_criteria:
+      - "/CHANGELOG.md exists"
+      - "Follows https://keepachangelog.com format"
+    artifacts: ["CHANGELOG.md"]
+    status: pending
+    priority: medium
+    tags: [docs]
+
+  - id: PK-CI-07
+    phase: phase-cross
+    title: "CONTRIBUTING.md"
+    description: "Lightweight contributor guide covering branch model, conventional commits, test commands, and code-of-conduct pointer."
+    owner: lead
+    estimated_effort_h: 0.5
+    dependencies: [PK-INIT-04]
+    acceptance_criteria:
+      - "/CONTRIBUTING.md exists"
+    artifacts: ["CONTRIBUTING.md"]
+    status: pending
+    priority: low
+    tags: [docs]
+
+  - id: PK-CI-08
+    phase: phase-cross
+    title: "PR template"
+    description: ".github/PULL_REQUEST_TEMPLATE.md with checklist (tests, docs, breaking-change, screenshots)."
+    owner: lead
+    estimated_effort_h: 0.25
+    dependencies: [PK-INIT-04]
+    acceptance_criteria:
+      - "Template appears on new PRs"
+    artifacts: [".github/PULL_REQUEST_TEMPLATE.md"]
+    status: pending
+    priority: low
+    tags: [dx]
+
+# -----------------------------------------------------------------------------
+# Drop-list (cuts if the schedule slips, ordered worst-first)
+# -----------------------------------------------------------------------------
+drop_list:
+  - PK-CI-08      # PR template
+  - PK-CI-07      # CONTRIBUTING.md
+  - PK-D3-08      # Python SDK (or ship a 30-line wrapper without tests)
+  - PK-D3-05      # Kill-switch UI (keep only the API endpoint)
+  - PK-D3-06      # Kill-switch backend (keep mock)
+  - PK-CI-03      # Dashboard CI
+  - PK-D5-04      # Non-developer review pass
+  - PK-D4-08      # Slide deck (optional for Devpost)
+never_drop:
+  - PK-D3-04      # Runaway agent demo
+  - PK-D3-07      # run-demo.sh
+  - PK-D2-09      # Kite attestation
+  - PK-D2-13      # End-to-end milestone
+  - PK-D4-02      # Hosted proxy
+  - PK-D4-03      # Hosted dashboard
+  - PK-D4-06      # Demo video
+  - PK-D6-03      # Submit
