@@ -1,0 +1,18 @@
+name: Solidity
+
+on:
+  push:
+    paths:
+      - "contracts/**"
+      - ".github/workflows/solidity.yml"
+  pull_request:
+    paths:
+      - "contracts/**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+      - run: cd contracts && forge test -vvv

@@ -419,7 +419,7 @@ tasks:
       - "GET /health returns 200 with {\"status\":\"ok\"}"
       - "tracing logs visible at INFO level"
     artifacts: ["crates/pennykite-proxy/src/main.rs", "crates/pennykite-proxy/Cargo.toml"]
-    status: pending
+    status: done
     priority: critical
     tags: [rust, http]
 
@@ -542,7 +542,7 @@ tasks:
       - "Tests with tempfile cover try_reserve approve, deny by budget, deny by per-request cap"
       - "reconcile() refunds the difference when actual < estimated"
     artifacts: ["crates/pennykite-ledger/src/lib.rs"]
-    status: pending
+    status: done
     priority: critical
     tags: [rust, ledger, sqlite]
 
@@ -1304,7 +1304,7 @@ tasks:
       - "Workflow file exists and is green on main"
       - "Caching configured for ~/.cargo and target/"
     artifacts: [".github/workflows/rust.yml"]
-    status: pending
+    status: done
     priority: high
     tags: [ci]
 
@@ -1318,7 +1318,7 @@ tasks:
     acceptance_criteria:
       - "Workflow green after PennyKiteAttestor lands"
     artifacts: [".github/workflows/contracts.yml"]
-    status: pending
+    status: done
     priority: high
     tags: [ci]
 
@@ -1332,7 +1332,7 @@ tasks:
     acceptance_criteria:
       - "Workflow green on main"
     artifacts: [".github/workflows/dashboard.yml"]
-    status: pending
+    status: done
     priority: medium
     tags: [ci]
 
