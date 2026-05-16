@@ -884,9 +884,10 @@ tasks:
       - "GET /predict/x without payment returns 402 with PAYMENT-REQUIRED"
       - "GET with valid PAYMENT-SIGNATURE returns 200 with prediction JSON"
     artifacts: ["demo/target-api/server.js", "demo/target-api/package.json", "demo/target-api/README.md"]
-    status: pending
+    status: done
     priority: critical
     tags: [demo, node]
+    notes: "Hand-rolled x402 protocol (PAYMENT-REQUIRED / PAYMENT-SIGNATURE / PAYMENT-RESPONSE) instead of @x402/express to avoid upstream package churn. Verified end-to-end with curl: 402+header, 200+response."
 
   - id: PK-D3-04
     phase: phase-3

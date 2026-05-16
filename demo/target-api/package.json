@@ -1,0 +1,19 @@
+{
+  "name": "pennykite-demo-target-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Demo x402-gated prediction API used in the PennyKite hackathon walkthrough.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "dotenv": "^16.4.5"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
