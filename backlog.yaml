@@ -576,7 +576,7 @@ tasks:
       - "Stat / Badge / EventRow render in Storybook or page"
       - "Mock endpoint feeds the page; live update every 1s via setInterval"
     artifacts: ["dashboard/components/**", "dashboard/app/api/mock/decisions/route.ts"]
-    status: pending
+    status: done
     priority: medium
     tags: [frontend]
 
