@@ -561,9 +561,10 @@ tasks:
       - "Returns the transaction hash"
       - "Cache verified by 2 consecutive verify_session calls within 5s producing 1 RPC call"
     artifacts: ["crates/pennykite-kite/src/lib.rs"]
-    status: pending
+    status: done
     priority: critical
     tags: [rust, kite, web3]
+    notes: "KiteRpc trait + KiteClient with 5s TTL cache + AlloyKiteRpc skeleton with sol! ABI bindings for PennyKiteAttestor. 8 unit tests including the spec-mandated 'two calls within TTL produce one RPC call' acceptance criterion. On-chain smoke test (criterion 1) gated by PK-D1-07 contract deployment."
 
   - id: PK-D1-12
     phase: phase-1

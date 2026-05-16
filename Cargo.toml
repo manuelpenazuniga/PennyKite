@@ -30,6 +30,7 @@ reqwest = { version = "0.12", features = ["json"] }
 rusqlite = { version = "0.34", features = ["bundled"] }
 clap = { version = "4", features = ["derive"] }
 alloy = { version = "2", default-features = false, features = ["essentials", "signer-local", "sol-types", "dyn-abi"] }
+async-trait = "0.1"
 url = "2"
 uuid = { version = "1", features = ["v4", "serde"] }
 sha3 = "0.10"
