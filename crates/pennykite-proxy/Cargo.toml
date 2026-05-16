@@ -16,6 +16,7 @@ pennykite-cost = { path = "../pennykite-cost" }
 pennykite-ledger = { path = "../pennykite-ledger" }
 pennykite-providers = { path = "../pennykite-providers" }
 pennykite-kite = { path = "../pennykite-kite" }
+alloy.workspace = true
 axum.workspace = true
 tokio.workspace = true
 tracing.workspace = true
@@ -26,3 +27,13 @@ serde.workspace = true
 serde_json.workspace = true
 reqwest.workspace = true
 url.workspace = true
+chrono.workspace = true
+uuid.workspace = true
+sha3.workspace = true
+hex.workspace = true
+async-trait.workspace = true
+
+[dev-dependencies]
+base64.workspace = true
+serde_yaml.workspace = true
+tower = "0.5"

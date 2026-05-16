@@ -3,8 +3,15 @@
 //! Starts an axum HTTP server that intercepts agent requests, enforces
 //! budget policy, and forwards approved requests to the upstream API.
 
+use alloy::{primitives::Address, signers::local::PrivateKeySigner};
 use anyhow::Result;
 use clap::Parser;
+use pennykite_providers::policy::load_policy;
+use pennykite_proxy::{app, handler::ReqwestUpstream, AppState};
+use std::{
+    str::FromStr,
+    sync::{Arc, Mutex},
+};
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
@@ -26,6 +33,17 @@ struct Args {
     /// Path to the SQLite ledger database.
     #[arg(long, default_value = "pennykite.db")]
     db: String,
+
+    /// Private key used to sign EIP-3009 payment authorizations.
+    #[arg(
+        long,
+        default_value = "0x59c6995e998f97a5a0044966f0945389d358f57d07535c8be9e515a7c99316c5"
+    )]
+    private_key: String,
+
+    /// USDC contract address used as the EIP-712 verifying contract.
+    #[arg(long, default_value = "0x036CbD53842c5426634e7929541eC2318f3dCF7e")]
+    usdc_contract: String,
 }
 
 #[tokio::main]
@@ -43,15 +61,23 @@ async fn main() -> Result<()> {
         "PennyKite proxy starting"
     );
 
-    let app = axum::Router::new().route("/health", axum::routing::get(health));
+    let policy = load_policy(&args.policy)?;
+    let signer = PrivateKeySigner::from_str(&args.private_key)?;
+    let usdc_contract = Address::from_str(&args.usdc_contract)?;
+    let state = AppState {
+        upstream: args.upstream,
+        db_path: args.db,
+        policy: Arc::new(policy),
+        upstream_client: Arc::new(ReqwestUpstream::new()),
+        ledger_lock: Arc::new(Mutex::new(())),
+        signer,
+        usdc_contract,
+    };
+    let app = app(state);
 
     let listener = tokio::net::TcpListener::bind(&args.listen).await?;
     info!("listening on {}", args.listen);
     axum::serve(listener, app).await?;
 
     Ok(())
-}
-
-async fn health() -> axum::Json<serde_json::Value> {
-    axum::Json(serde_json::json!({"status": "ok"}))
 }

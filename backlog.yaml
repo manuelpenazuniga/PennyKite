@@ -754,7 +754,8 @@ tasks:
       - "Denied path returns 402 with body { reason, verdict }"
       - "Integration test against a stub upstream"
     artifacts: ["crates/pennykite-proxy/src/handler.rs"]
-    status: pending
+    status: done
+    notes: "Implemented axum proxy handler for /proxy/{*path} plus direct /{*path} demo compatibility. Flow: forward first request, parse upstream PAYMENT-REQUIRED on 402, select policy-approved requirement, enforce per-request cap + SQLite reservation, sign EIP-3009 PAYMENT-SIGNATURE, replay upstream request, record approve/deny Decision rows with SHA3-256 decision_hash, and return PennyKite 402 JSON on deny. Added in-memory stub upstream tests for approved replay and deny body. Live smoke against demo target API returned 200 with PAYMENT-RESPONSE for both /predict/* and /proxy/predict/*. Attestation remains intentionally gated to PK-D2-09; loop detector remains gated to PK-D3-02."
     priority: critical
     tags: [rust, http, x402]
 

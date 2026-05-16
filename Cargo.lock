@@ -2871,9 +2871,14 @@ dependencies = [
 name = "pennykite-proxy"
 version = "0.1.0"
 dependencies = [
+ "alloy",
  "anyhow",
+ "async-trait",
  "axum",
+ "base64",
+ "chrono",
  "clap",
+ "hex",
  "pennykite-budget",
  "pennykite-cost",
  "pennykite-detect",
@@ -2884,10 +2889,14 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "serde_yaml",
+ "sha3 0.10.9",
  "tokio",
+ "tower",
  "tracing",
  "tracing-subscriber",
  "url",
+ "uuid",
 ]
 
 [[package]]

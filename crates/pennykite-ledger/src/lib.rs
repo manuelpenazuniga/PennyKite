@@ -3,10 +3,10 @@
 //! Provides row-locked reservation semantics so that concurrent requests
 //! cannot both consume the last cent of a session's budget.
 
-use chrono::Utc;
-use pennykite_types::{Decision, Verdict};
+use pennykite_types::Decision;
 use rusqlite::{params, Connection};
 use std::path::Path;
+use std::time::Duration;
 use thiserror::Error;
 use tracing::{debug, info};
 use uuid::Uuid;
@@ -29,6 +29,7 @@ impl Ledger {
     /// Open (or create) the ledger database at `path` and run migrations.
     pub fn open(path: impl AsRef<Path>) -> Result<Self, LedgerError> {
         let conn = Connection::open(path)?;
+        conn.busy_timeout(Duration::from_secs(5))?;
         conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")?;
         let ledger = Self { conn };
         ledger.migrate()?;
