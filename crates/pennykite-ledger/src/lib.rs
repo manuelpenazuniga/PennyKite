@@ -242,4 +242,51 @@ mod tests {
         let err = ledger.try_reserve("s1", 0.01).unwrap_err();
         assert!(matches!(err, LedgerError::SessionPaused(_)));
     }
+
+    /// PK-D2-10: 64 concurrent tasks racing for a budget that only fits one
+    /// reservation. Exactly one must win; the rest must observe the budget
+    /// already exhausted and return Ok(false).
+    #[tokio::test(flavor = "multi_thread", worker_threads = 8)]
+    async fn test_concurrent_reservation_atomicity() {
+        let db_path = format!("/tmp/pennykite-concurrency-{}.db", Uuid::new_v4());
+
+        // Bootstrap the session with a budget that fits exactly one reservation.
+        let cost = 0.10_f64;
+        {
+            let bootstrap = Ledger::open(&db_path).unwrap();
+            bootstrap.ensure_session("race", cost).unwrap();
+        }
+
+        let n = 64;
+        let mut handles = Vec::with_capacity(n);
+        for _ in 0..n {
+            let path = db_path.clone();
+            handles.push(tokio::task::spawn_blocking(move || {
+                let ledger = Ledger::open(&path).expect("open ledger");
+                ledger.try_reserve("race", cost)
+            }));
+        }
+
+        let mut winners = 0_usize;
+        let mut losers = 0_usize;
+        for h in handles {
+            match h.await.expect("join") {
+                Ok(true) => winners += 1,
+                Ok(false) => losers += 1,
+                Err(LedgerError::Database(rusqlite::Error::SqliteFailure(e, _)))
+                    if e.code == rusqlite::ErrorCode::DatabaseBusy =>
+                {
+                    // Acceptable: SQLite returned BUSY under contention; treat as a loser.
+                    losers += 1;
+                }
+                Err(other) => panic!("unexpected error: {other:?}"),
+            }
+        }
+
+        assert_eq!(winners, 1, "exactly one task must win the race");
+        assert_eq!(winners + losers, n);
+
+        let final_ledger = Ledger::open(&db_path).unwrap();
+        assert_eq!(final_ledger.spent("race").unwrap(), cost);
+    }
 }

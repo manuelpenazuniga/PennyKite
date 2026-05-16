@@ -1,0 +1,14 @@
+{
+  "version": "1.0",
+  "requirements": [
+    {
+      "network": "eip155:42161",
+      "asset": "PYUSD",
+      "amount": "100000",
+      "decimals": 6,
+      "pay_to": "0x00000000000000000000000000000000FaceB00C",
+      "facilitator": "https://facilitator.x402.example.com"
+    }
+  ],
+  "expires_at": "2026-12-31T23:59:59Z"
+}

@@ -1,0 +1,22 @@
+{
+  "version": "1.0",
+  "requirements": [
+    {
+      "network": "eip155:8453",
+      "asset": "USDC",
+      "amount": "50000",
+      "decimals": 6,
+      "pay_to": "0x000000000000000000000000000000000000dEaD",
+      "facilitator": "https://facilitator.x402.example.com"
+    },
+    {
+      "network": "eip155:8453",
+      "asset": "PYUSD",
+      "amount": "50000",
+      "decimals": 6,
+      "pay_to": "0x000000000000000000000000000000000000dEaD",
+      "facilitator": "https://facilitator.x402.example.com"
+    }
+  ],
+  "expires_at": null
+}

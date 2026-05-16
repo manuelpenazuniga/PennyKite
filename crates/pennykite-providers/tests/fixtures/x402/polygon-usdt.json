@@ -1,0 +1,14 @@
+{
+  "version": "1.0",
+  "requirements": [
+    {
+      "network": "eip155:137",
+      "asset": "USDT",
+      "amount": "250000",
+      "decimals": 6,
+      "pay_to": "0x0000000000000000000000000000000000C0FFEE",
+      "facilitator": "https://facilitator.x402.example.com"
+    }
+  ],
+  "expires_at": "2026-06-01T00:00:00Z"
+}

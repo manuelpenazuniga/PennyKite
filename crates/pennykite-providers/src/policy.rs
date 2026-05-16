@@ -58,13 +58,11 @@ fn validate(policy: &Policy) -> Result<(), PolicyError> {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_validate_negative_budget() {
-        let yaml = r#"
+    const VALID_YAML: &str = r#"
 version: "1.0"
 name: test
 session:
-  budget_usd: -5.0
+  budget_usd: 5.0
   per_request_cap_usd: 0.5
   max_duration_minutes: 30
 loop_detection:
@@ -80,7 +78,54 @@ kite_passport:
   session_key: "0x0"
   attestation_frequency: every_event
 "#;
-        let policy: Policy = serde_yaml::from_str(yaml).unwrap();
-        assert!(validate(&policy).is_err());
+
+    fn parse(yaml: &str) -> Policy {
+        serde_yaml::from_str(yaml).unwrap()
+    }
+
+    #[test]
+    fn test_validate_valid_policy() {
+        let policy = parse(VALID_YAML);
+        assert!(validate(&policy).is_ok());
+    }
+
+    #[test]
+    fn test_validate_negative_budget() {
+        let yaml = VALID_YAML.replace("budget_usd: 5.0", "budget_usd: -5.0");
+        let policy = parse(&yaml);
+        let err = validate(&policy).unwrap_err();
+        assert!(matches!(err, PolicyError::Validation(ref m) if m.contains("budget_usd")));
+    }
+
+    #[test]
+    fn test_validate_zero_per_request_cap() {
+        let yaml = VALID_YAML.replace("per_request_cap_usd: 0.5", "per_request_cap_usd: 0.0");
+        let policy = parse(&yaml);
+        let err = validate(&policy).unwrap_err();
+        assert!(matches!(err, PolicyError::Validation(ref m) if m.contains("per_request_cap_usd")));
+    }
+
+    #[test]
+    fn test_validate_empty_allowed_networks() {
+        let yaml = VALID_YAML.replace("allowed: [\"eip155:8453\"]", "allowed: []");
+        let policy = parse(&yaml);
+        let err = validate(&policy).unwrap_err();
+        assert!(matches!(err, PolicyError::Validation(ref m) if m.contains("networks.allowed")));
+    }
+
+    #[test]
+    fn test_validate_empty_assets() {
+        let yaml = VALID_YAML.replace("assets: [\"USDC\"]", "assets: []");
+        let policy = parse(&yaml);
+        let err = validate(&policy).unwrap_err();
+        assert!(matches!(err, PolicyError::Validation(ref m) if m.contains("networks.assets")));
+    }
+
+    #[test]
+    fn test_load_conservative_preset() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../policy/examples/conservative.yaml");
+        let policy = load_policy(&path).expect("conservative.yaml must load");
+        assert_eq!(policy.session.budget_usd, 5.0);
     }
 }

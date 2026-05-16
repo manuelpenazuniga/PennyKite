@@ -1,0 +1,14 @@
+{
+  "version": "1.0",
+  "requirements": [
+    {
+      "network": "eip155:2368",
+      "asset": "USDC",
+      "amount": "20000",
+      "decimals": 6,
+      "pay_to": "0x000000000000000000000000000000000000K1Te",
+      "facilitator": null
+    }
+  ],
+  "expires_at": "2026-12-31T23:59:59Z"
+}
