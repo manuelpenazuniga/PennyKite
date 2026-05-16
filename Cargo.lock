@@ -2856,7 +2856,9 @@ dependencies = [
 name = "pennykite-providers"
 version = "0.1.0"
 dependencies = [
+ "alloy",
  "base64",
+ "hex",
  "pennykite-types",
  "serde",
  "serde_json",
