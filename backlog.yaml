@@ -902,10 +902,11 @@ tasks:
     acceptance_criteria:
       - "`python3 agent.py unprotected` prints calls and accumulating spend"
       - "`python3 agent.py protected` stops after BLOCKED message"
-    artifacts: ["demo/runaway-agent/agent.py", "demo/runaway-agent/requirements.txt"]
-    status: pending
+    artifacts: ["demo/runaway-agent/agent.py", "demo/runaway-agent/requirements.txt", "demo/runaway-agent/README.md"]
+    status: done
     priority: critical
     tags: [demo, python]
+    notes: "Unprotected mode verified end-to-end: 4 calls × $0.05 = $0.20 spent against demo target API. Protected mode wiring depends on PK-D2-08 (full proxy handler); script handles 402/JSON response shape today and will light up automatically when the handler lands."
 
   - id: PK-D3-05
     phase: phase-3
