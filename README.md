@@ -392,22 +392,25 @@ Bundled presets: `conservative.yaml`, `trading-aggressive.yaml`, `consumer.yaml`
 
 ---
 
-## SDK
+## SDK (planned)
 
-### Python
+> **Status:** SDK packages are not yet published. The interfaces below show the planned API surface — tracked as `PK-D3-08` (Python) and `PK-D4-07` (TypeScript). In the meantime, agents can reach PennyKite by pointing any HTTP client at the proxy (`http://127.0.0.1:8787`) and setting the `x-pennykite-session` header.
+
+### Python (planned — `PK-D3-08`)
 
 ```python
+# Target API surface — not yet installable
 from pennykite import PennyKiteClient
 
 with PennyKiteClient(session_id="trade-2026-05-25") as client:
     response = client.get("https://api.neynar.com/v2/farcaster/casts?fid=123")
-    # If budget exceeded or loop detected, raises PennyKiteBudgetExceeded
-    #                                         or PennyKiteLoopDetected.
+    # Will raise PennyKiteBudgetExceeded or PennyKiteLoopDetected on 402.
 ```
 
-### TypeScript
+### TypeScript (planned)
 
 ```ts
+// Target API surface — not yet published
 import { PennyKiteClient } from "@pennykite/client";
 
 const client = new PennyKiteClient({ sessionId: "trade-2026-05-25" });
