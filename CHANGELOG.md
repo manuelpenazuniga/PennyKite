@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - README: "Local demo" section with step-by-step commands for proxy, target API, dashboard, session pause, and expected 402 response.
 - `documentation/demo-runbook.md`: step-by-step local smoke runbook covering approve flow, deny_loop scenario, kill-switch pause, and cleanup.
 - `.env.example`: placeholder environment template with comments for all required keys; real deployed addresses pending PK-D1-07.
+- `documentation/architecture.md`: architecture overview — crate decomposition, proxy flow, SQLite schema, dashboard, policy.
+- `documentation/kite-integration.md`: Kite integration doc — Agent Passport, PennyKiteAttestor, attestation flow, kill-switch, mock revocation status.
+- `documentation/x402-flow.md`: x402 protocol flow with Mermaid sequence diagram, EIP-3009 signing, deny flows.
 
 ## [0.1.0] — 2026-05-25 (planned)
 

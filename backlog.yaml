@@ -1131,6 +1131,7 @@ tasks:
     status: pending
     priority: high
     tags: [docs]
+    notes: "Draft docs created (architecture.md 1132w, kite-integration.md 810w, x402-flow.md 869w with Mermaid sequenceDiagram). Finalization still pending after dry-run/bugfix phase (PK-D4-01). Status remains pending due to dependency on PK-D4-01."
 
   - id: PK-D4-08
     phase: phase-4
