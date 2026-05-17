@@ -14,7 +14,7 @@ use axum::{
     body::{Body, Bytes},
     extract::{OriginalUri, State},
     http::{HeaderMap, HeaderName, HeaderValue, Method, Response, StatusCode, Uri},
-    routing::any,
+    routing::{any, get},
     Json, Router,
 };
 use chrono::Utc;
@@ -26,6 +26,7 @@ use pennykite_providers::{
     x402::parse_payment_required,
 };
 use pennykite_types::{Decision, PaymentRequirement, Policy, Verdict};
+use serde::Serialize;
 use serde_json::json;
 use sha3::{Digest, Sha3_256};
 use tracing::info;
@@ -124,6 +125,7 @@ impl UpstreamClient for ReqwestUpstream {
 pub fn app(state: AppState) -> Router {
     Router::new()
         .route("/health", axum::routing::get(health))
+        .route("/api/decisions", get(decisions_feed))
         .route("/proxy/{*path}", any(proxy))
         .route("/{*path}", any(proxy))
         .with_state(state)
@@ -131,6 +133,50 @@ pub fn app(state: AppState) -> Router {
 
 async fn health() -> Json<serde_json::Value> {
     Json(json!({"status": "ok"}))
+}
+
+#[derive(Serialize)]
+struct DecisionFeed {
+    summary: FeedSummary,
+    decisions: Vec<Decision>,
+}
+
+#[derive(Serialize)]
+struct FeedSummary {
+    session_id: String,
+    budget_usd: f64,
+    spent_usd: f64,
+    decisions_count: usize,
+}
+
+async fn decisions_feed(State(state): State<AppState>) -> Response<Body> {
+    match load_decision_feed(&state) {
+        Ok(feed) => json_response(StatusCode::OK, json!(feed)),
+        Err(err) => json_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json!({"error": "feed_error", "reason": err.to_string()}),
+        ),
+    }
+}
+
+fn load_decision_feed(state: &AppState) -> Result<DecisionFeed, LedgerError> {
+    let _guard = state.ledger_lock.lock().expect("ledger lock poisoned");
+    let ledger = Ledger::open(&state.db_path)?;
+    let decisions = ledger.recent_decisions(100)?;
+    let (budget, spent, decisions_count) = ledger.feed_totals()?;
+    Ok(DecisionFeed {
+        summary: FeedSummary {
+            session_id: "all-sessions".into(),
+            budget_usd: if budget > 0.0 {
+                budget
+            } else {
+                state.policy.session.budget_usd
+            },
+            spent_usd: spent,
+            decisions_count,
+        },
+        decisions,
+    })
 }
 
 async fn proxy(
@@ -626,6 +672,44 @@ kite_passport:
             .unwrap();
         let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
         assert_eq!(body["_pk_cost_usd"], json!(0.05));
+    }
+
+    #[tokio::test]
+    async fn decisions_feed_returns_recorded_proxy_decisions() {
+        let state = test_state("50000", test_policy(1.0, 0.5));
+        let app = app(state);
+
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/proxy/paid")
+                    .header(SESSION_HEADER, "feed-session")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/decisions")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(body["summary"]["decisions_count"], json!(1));
+        assert_eq!(body["decisions"][0]["session_id"], json!("feed-session"));
+        assert_eq!(body["decisions"][0]["verdict"], json!("approve"));
     }
 
     #[tokio::test]

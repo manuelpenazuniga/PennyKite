@@ -800,10 +800,11 @@ tasks:
     acceptance_criteria:
       - "Real decisions appear within 1.5s of proxy call"
       - "Empty / loading / error states handled"
-    artifacts: ["dashboard/app/page.tsx"]
-    status: pending
+    artifacts: ["dashboard/app/page.tsx", "dashboard/app/api/decisions/route.ts", "crates/pennykite-proxy/src/handler.rs", "crates/pennykite-ledger/src/lib.rs"]
+    status: done
     priority: high
     tags: [frontend]
+    notes: "Replaced mock dashboard feed with a real Next route that bridges to pennykite-proxy /api/decisions. Proxy now serves recent SQLite decisions and aggregate summary; dashboard polls /api/decisions every 1s with loading, empty, and error states. Verified with cargo test --workspace, dashboard npm run build, and live smoke: proxy request returned 200 with x-pennykite-decision-id and both proxy/dashboard /api/decisions returned the recorded decision immediately."
 
   - id: PK-D2-12
     phase: phase-2

@@ -3,7 +3,8 @@
 //! Provides row-locked reservation semantics so that concurrent requests
 //! cannot both consume the last cent of a session's budget.
 
-use pennykite_types::Decision;
+use chrono::{DateTime, Utc};
+use pennykite_types::{Decision, Verdict};
 use rusqlite::{params, Connection};
 use std::path::Path;
 use std::time::Duration;
@@ -19,6 +20,8 @@ pub enum LedgerError {
     SessionNotFound(String),
     #[error("session is paused: {0}")]
     SessionPaused(String),
+    #[error("decode error: {0}")]
+    Decode(String),
 }
 
 pub struct Ledger {
@@ -80,11 +83,7 @@ impl Ledger {
     /// Uses an immediate transaction + `UPDATE … WHERE` to guarantee that two
     /// concurrent callers cannot both succeed when only enough budget remains
     /// for one.
-    pub fn try_reserve(
-        &self,
-        session_id: &str,
-        estimated_cost: f64,
-    ) -> Result<bool, LedgerError> {
+    pub fn try_reserve(&self, session_id: &str, estimated_cost: f64) -> Result<bool, LedgerError> {
         let tx = self.conn.unchecked_transaction()?;
 
         let (spent, budget, status): (f64, f64, String) = tx
@@ -164,16 +163,60 @@ impl Ledger {
     }
 
     /// Update the attestation transaction hash for a decision.
-    pub fn set_attestation_tx(
-        &self,
-        decision_id: &Uuid,
-        tx_hash: &str,
-    ) -> Result<(), LedgerError> {
+    pub fn set_attestation_tx(&self, decision_id: &Uuid, tx_hash: &str) -> Result<(), LedgerError> {
         self.conn.execute(
             "UPDATE decisions SET attestation_tx = ?1 WHERE id = ?2",
             params![tx_hash, decision_id.to_string()],
         )?;
         Ok(())
+    }
+
+    /// Return recent decisions newest-first.
+    pub fn recent_decisions(&self, limit: usize) -> Result<Vec<Decision>, LedgerError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, session_id, timestamp, request_key, estimated_cost, verdict, reason, decision_hash, attestation_tx
+             FROM decisions
+             ORDER BY timestamp DESC, created_at DESC
+             LIMIT ?1",
+        )?;
+        let mut rows = stmt.query(params![limit as i64])?;
+        let mut decisions = Vec::new();
+
+        while let Some(row) = rows.next()? {
+            let id: String = row.get(0)?;
+            let timestamp: String = row.get(2)?;
+            let verdict: String = row.get(5)?;
+            decisions.push(Decision {
+                id: Uuid::parse_str(&id)
+                    .map_err(|err| LedgerError::Decode(format!("invalid decision id: {err}")))?,
+                session_id: row.get(1)?,
+                timestamp: DateTime::parse_from_rfc3339(&timestamp)
+                    .map_err(|err| LedgerError::Decode(format!("invalid timestamp: {err}")))?
+                    .with_timezone(&Utc),
+                request_key: row.get(3)?,
+                estimated_cost_usd: row.get(4)?,
+                verdict: serde_json::from_str::<Verdict>(&verdict)
+                    .map_err(|err| LedgerError::Decode(format!("invalid verdict: {err}")))?,
+                reason: row.get(6)?,
+                decision_hash: row.get(7)?,
+                kite_attestation_tx: row.get(8)?,
+            });
+        }
+
+        Ok(decisions)
+    }
+
+    /// Return aggregate session totals plus total decision count.
+    pub fn feed_totals(&self) -> Result<(f64, f64, usize), LedgerError> {
+        let (budget, spent): (f64, f64) = self.conn.query_row(
+            "SELECT COALESCE(SUM(budget_usd), 0.0), COALESCE(SUM(spent_usd), 0.0) FROM sessions",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )?;
+        let count: i64 = self
+            .conn
+            .query_row("SELECT COUNT(*) FROM decisions", [], |row| row.get(0))?;
+        Ok((budget, spent, count as usize))
     }
 
     /// Pause a session (kill-switch).
@@ -210,6 +253,20 @@ mod tests {
         Ledger::open(&path).unwrap()
     }
 
+    fn decision(session_id: &str, request_key: &str, verdict: Verdict, cost: f64) -> Decision {
+        Decision {
+            id: Uuid::new_v4(),
+            session_id: session_id.into(),
+            timestamp: Utc::now(),
+            request_key: request_key.into(),
+            estimated_cost_usd: cost,
+            verdict,
+            reason: "test".into(),
+            decision_hash: format!("0x{}", "11".repeat(32)),
+            kite_attestation_tx: None,
+        }
+    }
+
     #[test]
     fn test_reserve_and_spend() {
         let ledger = temp_ledger();
@@ -242,6 +299,40 @@ mod tests {
         ledger.pause_session("s1").unwrap();
         let err = ledger.try_reserve("s1", 0.01).unwrap_err();
         assert!(matches!(err, LedgerError::SessionPaused(_)));
+    }
+
+    #[test]
+    fn test_recent_decisions_newest_first() {
+        let ledger = temp_ledger();
+        ledger.ensure_session("s1", 5.0).unwrap();
+        let now = Utc::now();
+        let mut first = decision("s1", "GET /first", Verdict::Approve, 0.01);
+        first.timestamp = now;
+        let mut second = decision("s1", "GET /second", Verdict::DenyLoop, 0.0);
+        second.timestamp = now + chrono::Duration::seconds(1);
+        ledger.record_decision(&first).unwrap();
+        ledger.record_decision(&second).unwrap();
+
+        let decisions = ledger.recent_decisions(10).unwrap();
+        assert_eq!(decisions.len(), 2);
+        assert_eq!(decisions[0].request_key, "GET /second");
+        assert_eq!(decisions[1].request_key, "GET /first");
+        assert_eq!(decisions[0].verdict, Verdict::DenyLoop);
+    }
+
+    #[test]
+    fn test_feed_totals() {
+        let ledger = temp_ledger();
+        ledger.ensure_session("s1", 5.0).unwrap();
+        ledger.try_reserve("s1", 0.25).unwrap();
+        ledger
+            .record_decision(&decision("s1", "GET /paid", Verdict::Approve, 0.25))
+            .unwrap();
+
+        let (budget, spent, decisions_count) = ledger.feed_totals().unwrap();
+        assert_eq!(budget, 5.0);
+        assert_eq!(spent, 0.25);
+        assert_eq!(decisions_count, 1);
     }
 
     /// PK-D2-10: 64 concurrent tasks racing for a budget that only fits one

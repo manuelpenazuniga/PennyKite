@@ -13,21 +13,26 @@ interface FeedResponse {
 export default function Home() {
   const [data, setData] = useState<FeedResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
       try {
-        const res = await fetch("/api/mock/decisions", { cache: "no-store" });
+        const res = await fetch("/api/decisions", { cache: "no-store" });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = (await res.json()) as FeedResponse;
         if (!cancelled) {
           setData(json);
           setError(null);
+          setLoaded(true);
         }
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "fetch failed");
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : "fetch failed");
+          setLoaded(true);
+        }
       }
     }
 
@@ -93,9 +98,14 @@ export default function Home() {
           <span className="col-span-2 text-right">Cost</span>
           <span className="col-span-2 text-right">Hash</span>
         </header>
-        {decisions.length === 0 && !error && (
+        {!loaded && (
           <div className="px-4 py-8 text-center text-sm text-zinc-500">
-            Waiting for decisions…
+            Loading decision feed…
+          </div>
+        )}
+        {loaded && decisions.length === 0 && !error && (
+          <div className="px-4 py-8 text-center text-sm text-zinc-500">
+            No decisions yet. Send traffic through the proxy to populate this feed.
           </div>
         )}
         {decisions.map((d) => (
