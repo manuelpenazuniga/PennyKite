@@ -960,9 +960,10 @@ tasks:
       - "`./demo/run-demo.sh` works on a clean macOS / Linux"
       - "Cleanup leaves no zombie processes after Ctrl+C"
     artifacts: ["demo/run-demo.sh"]
-    status: pending
+    status: done
     priority: critical
     tags: [demo, scripts]
+    notes: "Implemented demo/run-demo.sh with dependency bootstrap, port checks, target/proxy/dashboard startup, interactive ENTER pauses, protected/unprotected runaway scenarios, and trap cleanup. Added --match-id to the runaway agent so the protected scenario reliably triggers exact-match deny_loop on the fourth request. Verified with bash -n, python py_compile, and PENNYKITE_DEMO_AUTO=1 ./demo/run-demo.sh; lsof confirmed no listeners left on 4100/8787/3000. Note: the original PK-D2-13 dependency remains gated on real Kite revocation, but the local demo script acceptance criteria are satisfied with the mock_pending pause flow."
 
   - id: PK-D3-08
     phase: phase-3

@@ -35,15 +35,15 @@ These references are in the pre-existing README and describe planned v0.1.0 cont
 
 | Reference | Line | Status | Backlog entry |
 |---|---|---|---|
-| `./demo/run-demo.sh` | 88, 215, 238 | ❌ Script does not exist | PK-D3-07 (pending) |
-| `.env.example` | 237 | ❌ File does not exist | PK-CI-04 (pending) |
+| `./demo/run-demo.sh` | 88, 215, 238 | ✅ Script implemented | PK-D3-07 |
+| `.env.example` | 237 | ✅ Placeholder template exists | PK-CI-04 (pending real deployed addresses) |
 
-**Impact of `.env.example` absence:** The README Quickstart (`cp .env.example .env`) fails silently on a fresh clone. This is a DX blocker. Creating `.env.example` is low effort (PK-CI-04 estimated 0.5h).
+**Impact of `.env.example` placeholders:** The README Quickstart can now copy `.env.example`, but real deployed addresses are still pending `PK-D1-07`.
 
-**Impact of `run-demo.sh` absence:** The "One-command demo" narrative in the README and the demo scenario description both reference the script. The manual runbook (`documentation/demo-runbook.md`) serves as a documented alternative until PK-D3-07 is completed.
+**Impact of `run-demo.sh`:** The README one-command demo reference now resolves to `demo/run-demo.sh`. The manual runbook (`documentation/demo-runbook.md`) remains the step-by-step fallback.
 
 ---
 
 ## Conclusion
 
-TASK 1–4 docs were rechecked after correcting demo-runbook expected outputs. Inaccuracies fixed: Node version floor (22→20), target API startup log, and pause response body. `.env.example` has since been created (DX blocker resolved for local dev). Architecture docs at `documentation/architecture.md`, `documentation/kite-integration.md`, and `documentation/x402-flow.md` have been created. `run-demo.sh` is in progress by another agent and remains aspirational in the README.
+TASK 1-4 docs were rechecked after correcting demo-runbook expected outputs. Inaccuracies fixed: Node version floor (22->20), target API startup log, and pause response body. `.env.example` has since been created (DX blocker resolved for local dev, real deployed addresses pending). Architecture docs at `documentation/architecture.md`, `documentation/kite-integration.md`, and `documentation/x402-flow.md` have been created. `demo/run-demo.sh` now exists and covers the local demo flow.

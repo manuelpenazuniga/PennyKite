@@ -196,13 +196,17 @@ def print_summary(summary: RunSummary, mode: str) -> None:
 
 
 def run_unprotected(
-    target_url: str, session_id: str, max_calls: int, budget: float
+    target_url: str,
+    session_id: str,
+    max_calls: int,
+    budget: float,
+    match_id: Optional[str],
 ) -> RunSummary:
     print_header("unprotected", session_id, budget, max_calls)
     spent = 0.0
     approved = 0
     for i in range(1, max_calls + 1):
-        result = call_unprotected(target_url, f"match-{i}")
+        result = call_unprotected(target_url, match_id or f"match-{i}")
         if result.status == 200:
             spent += result.cost_usd
             approved += 1
@@ -221,7 +225,11 @@ def run_unprotected(
 
 
 def run_protected(
-    proxy_url: str, session_id: str, max_calls: int, budget: float
+    proxy_url: str,
+    session_id: str,
+    max_calls: int,
+    budget: float,
+    match_id: Optional[str],
 ) -> RunSummary:
     print_header("protected", session_id, budget, max_calls)
     spent = 0.0
@@ -229,7 +237,7 @@ def run_protected(
     blocked = 0
     simulated_spend = 0.0
     for i in range(1, max_calls + 1):
-        result = call_protected(proxy_url, session_id, f"match-{i}")
+        result = call_protected(proxy_url, session_id, match_id or f"match-{i}")
         simulated_spend += 0.05  # what the agent would have paid unprotected
         if result.blocked:
             blocked += 1
@@ -278,13 +286,22 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--session", default="demo-session-001")
     parser.add_argument("--calls", type=int, default=20)
     parser.add_argument("--budget", type=float, default=5.0)
+    parser.add_argument(
+        "--match-id",
+        default=None,
+        help="Use one fixed match id for every call (useful for loop demos)",
+    )
     args = parser.parse_args(argv)
 
     try:
         if args.mode == "unprotected":
-            summary = run_unprotected(args.target, args.session, args.calls, args.budget)
+            summary = run_unprotected(
+                args.target, args.session, args.calls, args.budget, args.match_id
+            )
         else:
-            summary = run_protected(args.proxy, args.session, args.calls, args.budget)
+            summary = run_protected(
+                args.proxy, args.session, args.calls, args.budget, args.match_id
+            )
     except requests.RequestException as e:
         print(colour(f"ERROR: cannot reach upstream — {e}", RED + BOLD))
         return 2

@@ -68,11 +68,13 @@ Expected output:
 | `--session` | `demo-session-001` | Session identifier |
 | `--calls` | `20` | Maximum number of calls |
 | `--budget` | `5.0` | Display-only budget hint (the real budget lives in the proxy policy) |
+| `--match-id` | unique `match-N` per call | Fixed match id for every call; used by `demo/run-demo.sh` to trigger loop detection |
 
 ## Notes
 
 - `protected` mode requires the proxy handler from PK-D2-08 to be wired.
   Until then the script will surface raw HTTP errors — useful for debugging
   but not the polished demo.
-- The agent uses a deterministic `match-N` pattern so the loop detector
-  trips reliably during the demo.
+- By default the agent uses a deterministic `match-N` pattern. Pass
+  `--match-id <id>` to repeat the same upstream path and trigger the proxy's
+  exact-match loop detector during the demo.
