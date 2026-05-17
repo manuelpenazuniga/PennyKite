@@ -994,9 +994,10 @@ tasks:
       - "Balance widget polls every 500ms"
       - "Dashboard usable on a 1080p screen capture"
     artifacts: ["dashboard/components/**", "dashboard/app/page.tsx"]
-    status: pending
+    status: done
     priority: high
     tags: [frontend, ux]
+    notes: "Research completed in notes/dashboard-polish.md"
 
   - id: PK-D3-10
     phase: phase-3
