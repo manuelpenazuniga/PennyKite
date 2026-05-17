@@ -816,10 +816,11 @@ tasks:
     acceptance_criteria:
       - "Route /sessions/[id] renders for any valid id"
       - "Each row links to https://explorer.gokite.ai/tx/<hash>"
-    artifacts: ["dashboard/app/sessions/[id]/page.tsx"]
-    status: pending
+    artifacts: ["dashboard/app/sessions/[id]/page.tsx", "dashboard/app/api/sessions/[id]/route.ts", "crates/pennykite-proxy/src/handler.rs", "crates/pennykite-ledger/src/lib.rs"]
+    status: done
     priority: high
     tags: [frontend]
+    notes: "Added per-session ledger queries, proxy GET /api/sessions/{session_id}, Next bridge /api/sessions/[id], and dashboard /sessions/[id] detail page with budget remaining bar, decision timeline, and Kite explorer links for populated attestation tx hashes. Global feed rows now link to the session detail page. Verified with cargo test --workspace, dashboard npm run build, and live smoke against session-detail-smoke through demo target + proxy + Next."
 
   - id: PK-D2-13
     phase: phase-2

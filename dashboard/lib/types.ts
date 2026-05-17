@@ -25,3 +25,8 @@ export interface SessionSummary {
   spent_usd: number;
   decisions_count: number;
 }
+
+export interface DecisionFeed {
+  summary: SessionSummary;
+  decisions: Decision[];
+}

@@ -4,13 +4,20 @@ import type { DecisionFeed } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+
   try {
-    const res = await fetch(proxyUrl("/api/decisions"), { cache: "no-store" });
+    const res = await fetch(proxyUrl(`/api/sessions/${encodeURIComponent(id)}`), {
+      cache: "no-store",
+    });
     if (!res.ok) {
       return NextResponse.json(
-        { error: "proxy_feed_error", reason: `proxy returned HTTP ${res.status}` },
-        { status: 502 },
+        { error: "proxy_session_error", reason: `proxy returned HTTP ${res.status}` },
+        { status: res.status === 404 ? 404 : 502 },
       );
     }
 

@@ -12,7 +12,7 @@ use alloy::{
 use async_trait::async_trait;
 use axum::{
     body::{Body, Bytes},
-    extract::{OriginalUri, State},
+    extract::{OriginalUri, Path, State},
     http::{HeaderMap, HeaderName, HeaderValue, Method, Response, StatusCode, Uri},
     routing::{any, get},
     Json, Router,
@@ -126,6 +126,7 @@ pub fn app(state: AppState) -> Router {
     Router::new()
         .route("/health", axum::routing::get(health))
         .route("/api/decisions", get(decisions_feed))
+        .route("/api/sessions/{session_id}", get(session_detail))
         .route("/proxy/{*path}", any(proxy))
         .route("/{*path}", any(proxy))
         .with_state(state)
@@ -172,6 +173,39 @@ fn load_decision_feed(state: &AppState) -> Result<DecisionFeed, LedgerError> {
             } else {
                 state.policy.session.budget_usd
             },
+            spent_usd: spent,
+            decisions_count,
+        },
+        decisions,
+    })
+}
+
+async fn session_detail(
+    State(state): State<AppState>,
+    Path(session_id): Path<String>,
+) -> Response<Body> {
+    match load_session_detail(&state, &session_id) {
+        Ok(feed) => json_response(StatusCode::OK, json!(feed)),
+        Err(LedgerError::SessionNotFound(_)) => json_response(
+            StatusCode::NOT_FOUND,
+            json!({"error": "session_not_found", "session_id": session_id}),
+        ),
+        Err(err) => json_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json!({"error": "session_detail_error", "reason": err.to_string()}),
+        ),
+    }
+}
+
+fn load_session_detail(state: &AppState, session_id: &str) -> Result<DecisionFeed, LedgerError> {
+    let _guard = state.ledger_lock.lock().expect("ledger lock poisoned");
+    let ledger = Ledger::open(&state.db_path)?;
+    let decisions = ledger.session_decisions(session_id, 100)?;
+    let (budget, spent, decisions_count) = ledger.session_totals(session_id)?;
+    Ok(DecisionFeed {
+        summary: FeedSummary {
+            session_id: session_id.into(),
+            budget_usd: budget,
             spent_usd: spent,
             decisions_count,
         },
@@ -710,6 +744,46 @@ kite_passport:
         assert_eq!(body["summary"]["decisions_count"], json!(1));
         assert_eq!(body["decisions"][0]["session_id"], json!("feed-session"));
         assert_eq!(body["decisions"][0]["verdict"], json!("approve"));
+    }
+
+    #[tokio::test]
+    async fn session_detail_returns_only_requested_session() {
+        let state = test_state("50000", test_policy(1.0, 0.5));
+        let app = app(state);
+
+        for session_id in ["session-a", "session-b"] {
+            let response = app
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .uri(format!("/proxy/paid-{session_id}"))
+                        .header(SESSION_HEADER, session_id)
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::OK);
+        }
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/sessions/session-a")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(body["summary"]["session_id"], json!("session-a"));
+        assert_eq!(body["summary"]["decisions_count"], json!(1));
+        assert_eq!(body["decisions"][0]["session_id"], json!("session-a"));
     }
 
     #[tokio::test]

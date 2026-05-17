@@ -3,15 +3,10 @@
 import { useEffect, useState } from "react";
 import { Stat } from "@/components/Stat";
 import { EventRow } from "@/components/EventRow";
-import type { Decision, SessionSummary } from "@/lib/types";
-
-interface FeedResponse {
-  summary: SessionSummary;
-  decisions: Decision[];
-}
+import type { DecisionFeed } from "@/lib/types";
 
 export default function Home() {
-  const [data, setData] = useState<FeedResponse | null>(null);
+  const [data, setData] = useState<DecisionFeed | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
 
@@ -22,7 +17,7 @@ export default function Home() {
       try {
         const res = await fetch("/api/decisions", { cache: "no-store" });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = (await res.json()) as FeedResponse;
+        const json = (await res.json()) as DecisionFeed;
         if (!cancelled) {
           setData(json);
           setError(null);

@@ -30,7 +30,12 @@ export function EventRow({ decision }: { decision: Decision }) {
         <Badge verdict={decision.verdict} />
       </span>
       <span className="col-span-4 text-sm text-zinc-300 truncate font-mono">
-        {decision.request_key}
+        <a
+          className="hover:text-zinc-100"
+          href={`/sessions/${encodeURIComponent(decision.session_id)}`}
+        >
+          {decision.request_key}
+        </a>
       </span>
       <span className="col-span-2 text-sm text-zinc-100 font-mono text-right">
         {formatCost(decision.estimated_cost_usd)}

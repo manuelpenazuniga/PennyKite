@@ -5,7 +5,7 @@
 
 use chrono::{DateTime, Utc};
 use pennykite_types::{Decision, Verdict};
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, Row};
 use std::path::Path;
 use std::time::Duration;
 use thiserror::Error;
@@ -183,27 +183,56 @@ impl Ledger {
         let mut decisions = Vec::new();
 
         while let Some(row) = rows.next()? {
-            let id: String = row.get(0)?;
-            let timestamp: String = row.get(2)?;
-            let verdict: String = row.get(5)?;
-            decisions.push(Decision {
-                id: Uuid::parse_str(&id)
-                    .map_err(|err| LedgerError::Decode(format!("invalid decision id: {err}")))?,
-                session_id: row.get(1)?,
-                timestamp: DateTime::parse_from_rfc3339(&timestamp)
-                    .map_err(|err| LedgerError::Decode(format!("invalid timestamp: {err}")))?
-                    .with_timezone(&Utc),
-                request_key: row.get(3)?,
-                estimated_cost_usd: row.get(4)?,
-                verdict: serde_json::from_str::<Verdict>(&verdict)
-                    .map_err(|err| LedgerError::Decode(format!("invalid verdict: {err}")))?,
-                reason: row.get(6)?,
-                decision_hash: row.get(7)?,
-                kite_attestation_tx: row.get(8)?,
-            });
+            decisions.push(decision_from_row(row)?);
         }
 
         Ok(decisions)
+    }
+
+    /// Return recent decisions for one session newest-first.
+    pub fn session_decisions(
+        &self,
+        session_id: &str,
+        limit: usize,
+    ) -> Result<Vec<Decision>, LedgerError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, session_id, timestamp, request_key, estimated_cost, verdict, reason, decision_hash, attestation_tx
+             FROM decisions
+             WHERE session_id = ?1
+             ORDER BY timestamp DESC, created_at DESC
+             LIMIT ?2",
+        )?;
+        let mut rows = stmt.query(params![session_id, limit as i64])?;
+        let mut decisions = Vec::new();
+
+        while let Some(row) = rows.next()? {
+            decisions.push(decision_from_row(row)?);
+        }
+
+        Ok(decisions)
+    }
+
+    /// Return budget, spent, and decision count for one session.
+    pub fn session_totals(&self, session_id: &str) -> Result<(f64, f64, usize), LedgerError> {
+        let (budget, spent): (f64, f64) = self
+            .conn
+            .query_row(
+                "SELECT budget_usd, spent_usd FROM sessions WHERE id = ?1",
+                params![session_id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .map_err(|err| match err {
+                rusqlite::Error::QueryReturnedNoRows => {
+                    LedgerError::SessionNotFound(session_id.into())
+                }
+                err => LedgerError::Database(err),
+            })?;
+        let count: i64 = self.conn.query_row(
+            "SELECT COUNT(*) FROM decisions WHERE session_id = ?1",
+            params![session_id],
+            |row| row.get(0),
+        )?;
+        Ok((budget, spent, count as usize))
     }
 
     /// Return aggregate session totals plus total decision count.
@@ -242,6 +271,27 @@ impl Ledger {
             )
             .map_err(|_| LedgerError::SessionNotFound(session_id.into()))
     }
+}
+
+fn decision_from_row(row: &Row<'_>) -> Result<Decision, LedgerError> {
+    let id: String = row.get(0)?;
+    let timestamp: String = row.get(2)?;
+    let verdict: String = row.get(5)?;
+    Ok(Decision {
+        id: Uuid::parse_str(&id)
+            .map_err(|err| LedgerError::Decode(format!("invalid decision id: {err}")))?,
+        session_id: row.get(1)?,
+        timestamp: DateTime::parse_from_rfc3339(&timestamp)
+            .map_err(|err| LedgerError::Decode(format!("invalid timestamp: {err}")))?
+            .with_timezone(&Utc),
+        request_key: row.get(3)?,
+        estimated_cost_usd: row.get(4)?,
+        verdict: serde_json::from_str::<Verdict>(&verdict)
+            .map_err(|err| LedgerError::Decode(format!("invalid verdict: {err}")))?,
+        reason: row.get(6)?,
+        decision_hash: row.get(7)?,
+        kite_attestation_tx: row.get(8)?,
+    })
 }
 
 #[cfg(test)]
@@ -333,6 +383,32 @@ mod tests {
         assert_eq!(budget, 5.0);
         assert_eq!(spent, 0.25);
         assert_eq!(decisions_count, 1);
+    }
+
+    #[test]
+    fn test_session_decisions_and_totals() {
+        let ledger = temp_ledger();
+        ledger.ensure_session("s1", 5.0).unwrap();
+        ledger.ensure_session("s2", 5.0).unwrap();
+        ledger.try_reserve("s1", 0.25).unwrap();
+        ledger
+            .record_decision(&decision("s1", "GET /one", Verdict::Approve, 0.25))
+            .unwrap();
+        ledger
+            .record_decision(&decision("s2", "GET /two", Verdict::Approve, 0.10))
+            .unwrap();
+
+        let decisions = ledger.session_decisions("s1", 10).unwrap();
+        assert_eq!(decisions.len(), 1);
+        assert_eq!(decisions[0].request_key, "GET /one");
+
+        let (budget, spent, decisions_count) = ledger.session_totals("s1").unwrap();
+        assert_eq!(budget, 5.0);
+        assert_eq!(spent, 0.25);
+        assert_eq!(decisions_count, 1);
+
+        let err = ledger.session_totals("missing").unwrap_err();
+        assert!(matches!(err, LedgerError::SessionNotFound(_)));
     }
 
     /// PK-D2-10: 64 concurrent tasks racing for a budget that only fits one
