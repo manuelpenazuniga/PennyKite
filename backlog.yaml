@@ -1132,10 +1132,10 @@ tasks:
       - "documentation/kite-integration.md ≥ 400 words with code snippets"
       - "documentation/x402-flow.md ≥ 400 words with sequence diagram"
     artifacts: ["documentation/*.md"]
-    status: pending
+    status: done
     priority: high
     tags: [docs]
-    notes: "Draft docs created (architecture.md 1132w, kite-integration.md 810w, x402-flow.md 869w with Mermaid sequenceDiagram). Finalization still pending after dry-run/bugfix phase (PK-D4-01). Status remains pending due to dependency on PK-D4-01."
+    notes: "Finalized public docs after PK-D4-01. Verified word counts: architecture.md 1153w, kite-integration.md 797w, x402-flow.md 886w. x402-flow.md includes Mermaid sequenceDiagram; kite-integration.md includes Rust and Solidity snippets. Corrected stale technical claims around loop detection exact-field similarity, proxy flow ordering, PAYMENT-SIGNATURE hex serialization, SQLite decisions schema, canonical decision_hash input, Foundry-in-CI status, and no-longer-pending demo/Python SDK artifacts."
 
   - id: PK-D4-08
     phase: phase-4

@@ -39,7 +39,7 @@ Shared data structures used across all crates. Key types:
 Budget arithmetic helpers. Converts decimal USDC amounts (stored as strings in x402) to `f64` for comparison against policy caps.
 
 ### `pennykite-detect`
-Sliding-window loop detector. `LoopDetector` maintains a `VecDeque<RequestFingerprint>` bounded by `window_size`. On each `observe()` call it computes pairwise similarity (Jaccard on tokenised path + method + body) against the last `max_consecutive_similar` entries. If all recent fingerprints exceed `similarity_threshold`, `observe()` returns `true` and the proxy short-circuits with a `deny_loop` verdict before forwarding to upstream.
+Sliding-window loop detector. `LoopDetector` maintains a `VecDeque<RequestFingerprint>` bounded by `window_size`. In v0.1 it uses exact-field similarity over `(method, host, path, body_hash)`: identical fingerprints score `1.0`, different fields reduce the score, and `similarity_threshold` remains configurable for later fuzzy matching. If more than `max_consecutive_similar` recent fingerprints exceed the threshold, `observe()` returns `true` and the proxy short-circuits with a `deny_loop` verdict before forwarding to upstream.
 
 ### `pennykite-cost`
 Pre-execution cost estimation. Parses the upstream `PAYMENT-REQUIRED` header and selects the policy-approved requirement (matching network, asset, and per-request cap). Returns the estimated cost in USD for budget reservation.
@@ -50,7 +50,7 @@ Atomic SQLite ledger. Uses rusqlite with explicit transactions and row-level loc
 Key operations:
 - `ensure_session(session_id, budget_usd)` — idempotent session bootstrap.
 - `try_reserve(session_id, estimated_cost)` — atomically checks `spent_usd + estimated_cost ≤ budget_usd` and updates if true. Returns `false` on budget exhaustion, errors on paused session.
-- `record_decision(decision)` — appends to the `decisions` table; computes `decision_hash = SHA3-256(session_id ‖ path ‖ verdict ‖ estimated_cost ‖ timestamp)`.
+- `record_decision(decision)` — appends a proxy-computed decision row to the `decisions` table, including `decision_hash = SHA3-256(canonical decision JSON)`.
 - `pause_session(session_id)` — sets `status = 'paused'` in the `sessions` table; subsequent `try_reserve` calls immediately return `LedgerError::SessionPaused`.
 
 ### `pennykite-providers`
@@ -81,29 +81,28 @@ pennykite-proxy  (axum, :8787)
   ├─ 1. LoopDetector::observe(fingerprint)
   │     If loop: → 402 {verdict:"deny_loop", reason:"loop detected"}
   │
-  ├─ 2. Policy network check
-  │     If network not allowed: → 402 {verdict:"deny_network"}
-  │
-  ├─ 3. Forward request to upstream (no payment yet)
+  ├─ 2. Forward request to upstream (no payment yet)
   │     If upstream returns non-402: pass response back to agent
   │
-  ├─ 4. Upstream returns 402 PAYMENT-REQUIRED
+  ├─ 3. Upstream returns 402 PAYMENT-REQUIRED
   │     Parse PAYMENT-REQUIRED header → PaymentRequired
   │     Select best requirement matching policy (network + asset)
+  │     If no requirement matches: → 402 {verdict:"deny_network"}
   │
-  ├─ 5. Per-request cap check
-  │     If estimated_cost > per_request_cap_usd: → 402 {verdict:"deny"}
+  ├─ 4. Per-request cap check
+  │     If estimated_cost > per_request_cap_usd: → 402 {verdict:"deny_budget"}
   │
-  ├─ 6. Ledger::try_reserve(session_id, estimated_cost)
-  │     If budget exhausted or session paused: → 402 {verdict:"deny_budget"}
+  ├─ 5. Ledger::try_reserve(session_id, estimated_cost)
+  │     If budget exhausted: → 402 {verdict:"deny_budget"}
+  │     If session paused: → 402 {verdict:"deny"}
   │
-  ├─ 7. EIP-3009 sign: transferWithAuthorization digest
+  ├─ 6. EIP-3009 sign: transferWithAuthorization digest
   │     Build PAYMENT-SIGNATURE header
   │
-  ├─ 8. Replay request to upstream with PAYMENT-SIGNATURE
+  ├─ 7. Replay request to upstream with PAYMENT-SIGNATURE
   │     Upstream processes payment and returns 200
   │
-  └─ 9. Ledger::record_decision(approve, cost, decision_hash)
+  └─ 8. Ledger::record_decision(approve, cost, decision_hash)
         → 200 to agent
 ```
 
@@ -124,14 +123,16 @@ CREATE TABLE sessions (
 );
 
 CREATE TABLE decisions (
-    id             TEXT PRIMARY KEY,
-    session_id     TEXT NOT NULL REFERENCES sessions(id),
-    timestamp      TEXT NOT NULL,
-    method         TEXT NOT NULL,
-    path           TEXT NOT NULL,
-    verdict        TEXT NOT NULL,
-    estimated_cost REAL,
-    decision_hash  TEXT NOT NULL
+    id              TEXT PRIMARY KEY,
+    session_id      TEXT NOT NULL REFERENCES sessions(id),
+    timestamp       TEXT NOT NULL,
+    request_key     TEXT NOT NULL,
+    estimated_cost  REAL NOT NULL,
+    verdict         TEXT NOT NULL,
+    reason          TEXT NOT NULL,
+    decision_hash   TEXT NOT NULL,
+    attestation_tx  TEXT,
+    created_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
 ```
 
@@ -197,5 +198,5 @@ Policy is immutable after proxy boot. Changing policy requires a proxy restart.
 |---|---|---|
 | On-chain attestation writes | Stub — `PennyKiteAttestor` contract not yet deployed | PK-D1-07, PK-D2-09 |
 | Real Kite Passport session revocation | Mock — pause is SQLite-only today | PK-D2-13 |
-| One-command demo script | Pending | PK-D3-07 |
-| Python / TypeScript SDK packages | Planned API surface only | PK-D3-08 |
+| Hosted proxy/dashboard | Local-only for v0.1 until deploy tasks land | PK-D4-02, PK-D4-03 |
+| TypeScript SDK package | Planned API surface only | Future v0.2 |

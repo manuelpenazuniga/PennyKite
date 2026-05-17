@@ -38,18 +38,16 @@ sequenceDiagram
         Proxy-->>Agent: 402 {"verdict":"deny_loop","reason":"loop detected"}
     end
 
-    Note over Proxy: 2. Network policy check<br/>Is upstream network in allowed list?
-
-    alt Network not allowed
-        Proxy-->>Agent: 402 {"verdict":"deny_network"}
-    end
-
     Proxy->>Upstream: Forward request (no payment yet)
     Upstream-->>Proxy: 402 PAYMENT-REQUIRED<br/>{"network":"eip155:84532","asset":"USDC","amount":"50000",...}
 
-    Note over Proxy: 3. Parse PAYMENT-REQUIRED<br/>Select requirement matching policy<br/>estimated_cost = $0.05
+    Note over Proxy: 2. Parse PAYMENT-REQUIRED<br/>Select requirement matching policy<br/>estimated_cost = $0.05
 
-    Note over Proxy: 4. Per-request cap check<br/>$0.05 ≤ per_request_cap_usd ($0.50) ✓
+    alt Network or asset not allowed
+        Proxy-->>Agent: 402 {"verdict":"deny_network"}
+    end
+
+    Note over Proxy: 3. Per-request cap check<br/>$0.05 ≤ per_request_cap_usd ($0.50) ✓
 
     Proxy->>Ledger: try_reserve("demo-session", 0.05)
     Note over Ledger: Atomic: spent_usd + 0.05 ≤ budget_usd?<br/>UPDATE sessions SET spent_usd = spent_usd + 0.05
@@ -61,17 +59,17 @@ sequenceDiagram
 
     Ledger-->>Proxy: true (reserved)
 
-    Note over Proxy: 5. EIP-3009 signing<br/>Build transferWithAuthorization digest<br/>Sign with PrivateKeySigner
+    Note over Proxy: 4. EIP-3009 signing<br/>Build transferWithAuthorization digest<br/>Sign with PrivateKeySigner
 
     Proxy->>Upstream: Replay request + PAYMENT-SIGNATURE header
     Upstream-->>Proxy: 200 OK + PAYMENT-RESPONSE header<br/>{"prediction":"home_win",...}
 
-    Note over Proxy: 6. Record decision<br/>verdict=approve, hash=SHA3-256(...)
+    Note over Proxy: 5. Record decision<br/>verdict=approve, hash=SHA3-256(...)
 
     Proxy->>Ledger: record_decision(approve, $0.05, decision_hash)
     Proxy-->>Agent: 200 OK (upstream response forwarded)
 
-    Note over Proxy: 7. On-chain attestation (pending PK-D2-09)
+    Note over Proxy: 6. On-chain attestation (pending PK-D2-09)
     Proxy->>Kite: attest(decision_hash) — stub today
     Kite-->>Proxy: TxHash (future)
 ```
@@ -90,7 +88,7 @@ PennyKite's signing code lives in `crates/pennykite-providers/src/eip3009.rs`. I
 1. Builds the `TransferWithAuthorization` struct with the payment parameters from the `PAYMENT-REQUIRED` header.
 2. Computes the EIP-712 digest using the chain ID and USDC contract address configured at proxy startup.
 3. Signs with the `PrivateKeySigner` loaded from `--private-key`.
-4. Base64-encodes the `{signature, authorization}` JSON and sets it as the `PAYMENT-SIGNATURE` header.
+4. Serializes the 65-byte signature as `0x...` hex and sets it as the `PAYMENT-SIGNATURE` header for the replay request.
 
 ---
 
@@ -147,7 +145,7 @@ The pause takes effect immediately on the next request. No on-chain transaction 
 
 ## Loop detection sequence
 
-The loop detector runs *before* the upstream request is forwarded, so a detected loop costs zero upstream traffic:
+The loop detector runs *before* the upstream request is forwarded, so a detected loop costs zero upstream traffic. In v0.1, similarity is exact-field matching over `(method, host, path, body_hash)`; identical requests score `1.0`, which exceeds the default `0.85` threshold:
 
 ```
 Agent sends request #4 (identical to #1, #2, #3)
@@ -163,7 +161,7 @@ LoopDetector::observe(fingerprint)
 return true (loop detected)
         │
         ▼
-Record Decision(verdict=deny_loop, cost=None, hash=SHA3-256(...))
+Record Decision(verdict=deny_loop, cost=$0.00, hash=SHA3-256(...))
         │
         ▼
 402 {"verdict":"deny_loop","reason":"loop detected"}

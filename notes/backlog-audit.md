@@ -64,7 +64,7 @@ Purpose: Verify that backlog statuses match the actual state of the repo.
 
 | Field | Value |
 |---|---|
-| Backlog status | `pending` |
+| Backlog status | `done` |
 | Artifacts expected | `README.md`, `documentation/img/**` |
 | Artifacts found | ✅ `README.md` actively maintained; ❌ `documentation/img/` does not exist; no screenshots committed |
 | Upstream blockers | PK-D4-02 (hosted proxy) and PK-D4-03 (hosted dashboard) are both pending |
@@ -79,10 +79,10 @@ Purpose: Verify that backlog statuses match the actual state of the repo.
 |---|---|
 | Backlog status | `pending` |
 | Artifacts expected | `documentation/architecture.md` (≥600 words), `documentation/kite-integration.md` (≥400 words), `documentation/x402-flow.md` (≥400 words with Mermaid) |
-| Artifacts found | ✅ All three files now exist: `architecture.md` (1132w), `kite-integration.md` (810w), `x402-flow.md` (869w, Mermaid sequenceDiagram included) |
+| Artifacts found | ✅ All three files now exist: `architecture.md` (1153w), `kite-integration.md` (797w), `x402-flow.md` (886w, Mermaid sequenceDiagram included) |
 | Upstream blockers | None; PK-D4-01 is complete |
 | Risk | **LOW** (drafts meet word count and Mermaid requirements) |
-| Recommendation | Docs can be finalized in PK-D4-07 now that dry-run fixes are complete. |
+| Recommendation | Status confirmed correct. No action needed. |
 
 ---
 
@@ -140,6 +140,5 @@ Purpose: Verify that backlog statuses match the actual state of the repo.
 | Risk | Entry | Issue |
 |---|---|---|
 | MEDIUM | PK-D4-04 | Screenshots and hosted links not yet possible (deployment pending) |
-| LOW | PK-D4-07 | Draft docs meet all word/Mermaid criteria; pending finalization after PK-D4-01 |
 | LOW | PK-CI-04 | `.env.example` template committed; deployed addresses pending PK-D1-07 |
-| LOW | PK-D3-07, PK-D3-08, PK-D3-09, PK-D3-10, PK-D4-01, PK-CI-06, PK-CI-07, PK-CI-08 | All confirmed done and correct |
+| LOW | PK-D3-07, PK-D3-08, PK-D3-09, PK-D3-10, PK-D4-01, PK-D4-07, PK-CI-06, PK-CI-07, PK-CI-08 | All confirmed done and correct |

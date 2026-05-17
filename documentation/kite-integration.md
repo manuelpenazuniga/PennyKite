@@ -57,9 +57,9 @@ event DecisionAnchored(
 function attest(bytes32 decisionHash) external;
 ```
 
-Every proxy decision — approve *or* deny — produces a `decision_hash = SHA3-256(session_id ‖ path ‖ verdict ‖ estimated_cost ‖ timestamp)` on the Rust side. Once the contract is deployed and `pennykite-kite` is wired, that hash is submitted to Kite in a single transaction.
+Every proxy decision — approve *or* deny — produces a `decision_hash = SHA3-256(canonical decision JSON)` on the Rust side. Once the contract is deployed and `pennykite-kite` is wired, that hash is submitted to Kite in a single transaction.
 
-**Current status:** The contract code is complete and tested locally with Foundry (`forge test`). Deployment to Kite testnet is pending the availability of the Kite EVM-compatible RPC endpoint and faucet (tracked as `PK-D1-07`).
+**Current status:** The contract code is complete and covered by Foundry tests in CI. Foundry is not required for the local demo. Deployment to Kite testnet is tracked as `PK-D1-07`.
 
 ---
 
@@ -68,7 +68,7 @@ Every proxy decision — approve *or* deny — produces a `decision_hash = SHA3-
 ```
 proxy_inner (Rust)
     │
-    ├─ compute decision_hash = keccak256(session_id ‖ verdict ‖ cost ‖ ts)
+    ├─ compute decision_hash = SHA3-256(canonical decision JSON)
     ├─ ledger.record_decision(decision)          ← SQLite write (implemented)
     └─ kite_rpc.attest(decision_hash)            ← on-chain write (pending PK-D2-09)
            │
