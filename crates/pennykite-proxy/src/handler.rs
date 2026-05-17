@@ -20,7 +20,7 @@ use axum::{
 use chrono::Utc;
 use pennykite_cost::{amount_to_usd, select_requirement};
 use pennykite_detect::{LoopDetector, RequestFingerprint};
-use pennykite_ledger::{Ledger, LedgerError};
+use pennykite_ledger::{Ledger, LedgerError, SessionRecord};
 use pennykite_providers::{
     eip3009::{sign_transfer_with_authorization, TransferWithAuthorization},
     x402::parse_payment_required,
@@ -126,6 +126,7 @@ pub fn app(state: AppState) -> Router {
     Router::new()
         .route("/health", axum::routing::get(health))
         .route("/api/decisions", get(decisions_feed))
+        .route("/api/sessions", get(sessions_list))
         .route("/api/sessions/{session_id}", get(session_detail))
         .route("/api/sessions/{session_id}/pause", post(pause_session))
         .route("/sessions/{session_id}/pause", post(pause_session))
@@ -149,6 +150,20 @@ struct FeedSummary {
     session_id: String,
     budget_usd: f64,
     spent_usd: f64,
+    decisions_count: usize,
+}
+
+#[derive(Serialize)]
+struct SessionsResponse {
+    sessions: Vec<SessionRecordResponse>,
+}
+
+#[derive(Serialize)]
+struct SessionRecordResponse {
+    id: String,
+    budget_usd: f64,
+    spent_usd: f64,
+    status: String,
     decisions_count: usize,
 }
 
@@ -180,6 +195,26 @@ fn load_decision_feed(state: &AppState) -> Result<DecisionFeed, LedgerError> {
         },
         decisions,
     })
+}
+
+async fn sessions_list(State(state): State<AppState>) -> Response<Body> {
+    match load_sessions(&state) {
+        Ok(sessions) => json_response(StatusCode::OK, json!(SessionsResponse { sessions })),
+        Err(err) => json_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json!({"error": "sessions_error", "reason": err.to_string()}),
+        ),
+    }
+}
+
+fn load_sessions(state: &AppState) -> Result<Vec<SessionRecordResponse>, LedgerError> {
+    let _guard = state.ledger_lock.lock().expect("ledger lock poisoned");
+    let ledger = Ledger::open(&state.db_path)?;
+    Ok(ledger
+        .list_sessions()?
+        .into_iter()
+        .map(SessionRecordResponse::from)
+        .collect())
 }
 
 async fn session_detail(
@@ -243,6 +278,18 @@ fn pause_session_in_ledger(state: &AppState, session_id: &str) -> Result<(), Led
     let _guard = state.ledger_lock.lock().expect("ledger lock poisoned");
     let ledger = Ledger::open(&state.db_path)?;
     ledger.pause_session(session_id)
+}
+
+impl From<SessionRecord> for SessionRecordResponse {
+    fn from(session: SessionRecord) -> Self {
+        Self {
+            id: session.id,
+            budget_usd: session.budget_usd,
+            spent_usd: session.spent_usd,
+            status: session.status,
+            decisions_count: session.decisions_count,
+        }
+    }
 }
 
 async fn proxy(
@@ -829,6 +876,66 @@ kite_passport:
         assert_eq!(body["summary"]["session_id"], json!("session-a"));
         assert_eq!(body["summary"]["decisions_count"], json!(1));
         assert_eq!(body["decisions"][0]["session_id"], json!("session-a"));
+    }
+
+    #[tokio::test]
+    async fn sessions_list_returns_session_statuses() {
+        let state = test_state("50000", test_policy(1.0, 0.5));
+        let app = app(state);
+
+        for session_id in ["session-a", "session-b"] {
+            let response = app
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .uri(format!("/proxy/paid-{session_id}"))
+                        .header(SESSION_HEADER, session_id)
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::OK);
+        }
+
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method(Method::POST)
+                    .uri("/api/sessions/session-a/pause")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::ACCEPTED);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/sessions")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        let sessions = body["sessions"].as_array().unwrap();
+        assert_eq!(sessions.len(), 2);
+        assert!(sessions
+            .iter()
+            .any(|session| session["id"] == json!("session-a")
+                && session["status"] == json!("paused")));
+        assert!(sessions
+            .iter()
+            .any(|session| session["id"] == json!("session-b")
+                && session["status"] == json!("active")));
     }
 
     #[tokio::test]

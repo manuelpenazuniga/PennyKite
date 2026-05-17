@@ -30,3 +30,21 @@ export interface DecisionFeed {
   summary: SessionSummary;
   decisions: Decision[];
 }
+
+export interface SessionControlSummary {
+  id: string;
+  budget_usd: number;
+  spent_usd: number;
+  status: "active" | "paused" | string;
+  decisions_count: number;
+}
+
+export interface SessionsResponse {
+  sessions: SessionControlSummary[];
+}
+
+export interface PauseSessionResponse {
+  status: string;
+  session_id: string;
+  kite_revocation: string;
+}

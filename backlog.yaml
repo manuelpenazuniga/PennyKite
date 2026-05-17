@@ -924,10 +924,11 @@ tasks:
     acceptance_criteria:
       - "Page lists sessions sourced from proxy"
       - "Pause button transitions session to status=paused in ledger"
-    artifacts: ["dashboard/app/kill-switch/page.tsx"]
-    status: pending
+    artifacts: ["dashboard/app/kill-switch/page.tsx", "dashboard/app/api/sessions/route.ts", "dashboard/app/api/sessions/[id]/pause/route.ts", "crates/pennykite-proxy/src/handler.rs", "crates/pennykite-ledger/src/lib.rs"]
+    status: done
     priority: high
     tags: [frontend]
+    notes: "Added proxy-backed sessions list and dashboard /kill-switch page. Page polls /api/sessions, lists active/paused sessions from SQLite, links each session to detail, and Pause calls the Next bridge to proxy pause endpoint; UI refresh shows status=paused. Verified with cargo test -p pennykite-ledger -p pennykite-proxy, cargo test --workspace, dashboard npm run build, and live smoke: kill-ui-smoke appeared active, POST /api/sessions/kill-ui-smoke/pause returned 202, then /api/sessions returned status=paused."
 
   - id: PK-D3-06
     phase: phase-3

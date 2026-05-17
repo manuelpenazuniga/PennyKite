@@ -51,6 +51,9 @@ export default function Home() {
         <p className="text-zinc-400 text-sm mt-1">
           Pre-execution budget guardian for the agentic economy.
         </p>
+        <a className="mt-3 inline-block text-sm text-rose-300 hover:text-rose-200" href="/kill-switch">
+          Open kill switch
+        </a>
         {summary && (
           <p className="text-xs text-zinc-500 font-mono mt-2">
             session: {summary.session_id}

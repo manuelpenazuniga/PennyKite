@@ -28,6 +28,15 @@ pub struct Ledger {
     conn: Connection,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct SessionRecord {
+    pub id: String,
+    pub budget_usd: f64,
+    pub spent_usd: f64,
+    pub status: String,
+    pub decisions_count: usize,
+}
+
 impl Ledger {
     /// Open (or create) the ledger database at `path` and run migrations.
     pub fn open(path: impl AsRef<Path>) -> Result<Self, LedgerError> {
@@ -235,6 +244,32 @@ impl Ledger {
         Ok((budget, spent, count as usize))
     }
 
+    /// Return sessions newest-updated first.
+    pub fn list_sessions(&self) -> Result<Vec<SessionRecord>, LedgerError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT s.id, s.budget_usd, s.spent_usd, s.status, COUNT(d.id) AS decisions_count
+             FROM sessions s
+             LEFT JOIN decisions d ON d.session_id = s.id
+             GROUP BY s.id, s.budget_usd, s.spent_usd, s.status, s.updated_at, s.created_at
+             ORDER BY s.updated_at DESC, s.created_at DESC",
+        )?;
+        let mut rows = stmt.query([])?;
+        let mut sessions = Vec::new();
+
+        while let Some(row) = rows.next()? {
+            let decisions_count: i64 = row.get(4)?;
+            sessions.push(SessionRecord {
+                id: row.get(0)?,
+                budget_usd: row.get(1)?,
+                spent_usd: row.get(2)?,
+                status: row.get(3)?,
+                decisions_count: decisions_count as usize,
+            });
+        }
+
+        Ok(sessions)
+    }
+
     /// Return aggregate session totals plus total decision count.
     pub fn feed_totals(&self) -> Result<(f64, f64, usize), LedgerError> {
         let (budget, spent): (f64, f64) = self.conn.query_row(
@@ -409,6 +444,29 @@ mod tests {
 
         let err = ledger.session_totals("missing").unwrap_err();
         assert!(matches!(err, LedgerError::SessionNotFound(_)));
+    }
+
+    #[test]
+    fn test_list_sessions_includes_status_and_decision_count() {
+        let ledger = temp_ledger();
+        ledger.ensure_session("s1", 5.0).unwrap();
+        ledger.ensure_session("s2", 2.0).unwrap();
+        ledger.try_reserve("s1", 0.25).unwrap();
+        ledger
+            .record_decision(&decision("s1", "GET /one", Verdict::Approve, 0.25))
+            .unwrap();
+        ledger.pause_session("s1").unwrap();
+
+        let sessions = ledger.list_sessions().unwrap();
+        let paused = sessions.iter().find(|session| session.id == "s1").unwrap();
+        assert_eq!(paused.status, "paused");
+        assert_eq!(paused.budget_usd, 5.0);
+        assert_eq!(paused.spent_usd, 0.25);
+        assert_eq!(paused.decisions_count, 1);
+
+        let active = sessions.iter().find(|session| session.id == "s2").unwrap();
+        assert_eq!(active.status, "active");
+        assert_eq!(active.decisions_count, 0);
     }
 
     /// PK-D2-10: 64 concurrent tasks racing for a budget that only fits one
