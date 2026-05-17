@@ -22,7 +22,7 @@ function shortHash(hash: string): string {
 
 export function EventRow({ decision }: { decision: Decision }) {
   return (
-    <div className="grid grid-cols-12 gap-3 items-center py-3 px-4 border-b border-zinc-800 hover:bg-zinc-900/50 transition-colors">
+    <div className="animate-row-enter grid grid-cols-12 gap-3 items-center py-3 px-4 border-b border-zinc-800 hover:bg-zinc-900/50 transition-colors">
       <span className="col-span-2 text-xs text-zinc-500 font-mono">
         {formatTime(decision.timestamp)}
       </span>

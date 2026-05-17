@@ -7,23 +7,23 @@ const verdictStyles: Record<Verdict, { label: string; className: string }> = {
   },
   deny: {
     label: "DENY",
-    className: "bg-rose-500/10 text-rose-400 border-rose-500/20",
+    className: "bg-rose-500/30 text-rose-300 border-rose-500/50 shadow-[0_0_8px_rgba(244,63,94,0.4)]",
   },
   deny_loop: {
     label: "DENY · LOOP",
-    className: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+    className: "bg-amber-600 text-white border-amber-400 font-bold shadow-[0_0_12px_rgba(217,119,6,0.6)] animate-pulse",
   },
   deny_budget: {
     label: "DENY · BUDGET",
-    className: "bg-rose-500/10 text-rose-400 border-rose-500/20",
+    className: "bg-rose-500/30 text-rose-300 border-rose-500/50 shadow-[0_0_8px_rgba(244,63,94,0.4)]",
   },
   deny_network: {
     label: "DENY · NETWORK",
-    className: "bg-rose-500/10 text-rose-400 border-rose-500/20",
+    className: "bg-rose-500/30 text-rose-300 border-rose-500/50 shadow-[0_0_8px_rgba(244,63,94,0.4)]",
   },
   deny_asset: {
     label: "DENY · ASSET",
-    className: "bg-rose-500/10 text-rose-400 border-rose-500/20",
+    className: "bg-rose-500/30 text-rose-300 border-rose-500/50 shadow-[0_0_8px_rgba(244,63,94,0.4)]",
   },
   session_invalid: {
     label: "SESSION INVALID",

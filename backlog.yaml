@@ -998,7 +998,7 @@ tasks:
     status: done
     priority: high
     tags: [frontend, ux]
-    notes: "Research completed in notes/dashboard-polish.md"
+    notes: "Implemented actual UI polish: 500ms polling, Demo wallet balance widget, CSS animate-row-enter <300ms, strong red/amber visuals for denies, and sticky table header."
 
   - id: PK-D3-10
     phase: phase-3

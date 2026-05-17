@@ -32,7 +32,7 @@ export default function Home() {
     }
 
     load();
-    const id = setInterval(load, 1000);
+    const id = setInterval(load, 500);
     return () => {
       cancelled = true;
       clearInterval(id);
@@ -67,6 +67,13 @@ export default function Home() {
         </div>
       )}
 
+      <div className="mb-4 p-4 rounded-lg border border-amber-500/30 bg-amber-500/10 flex justify-between items-center shadow-[0_0_12px_rgba(245,158,11,0.2)]">
+        <span className="text-amber-400 font-medium tracking-wide uppercase text-sm">Demo wallet balance</span>
+        <span className="text-2xl text-amber-300 font-mono tracking-tight font-bold">
+          {summary ? `$${remaining.toFixed(4)}` : "—"}
+        </span>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8">
         <Stat
           label="Budget"
@@ -88,8 +95,8 @@ export default function Home() {
         />
       </div>
 
-      <section className="rounded-lg border border-zinc-800 bg-zinc-900/30">
-        <header className="grid grid-cols-12 gap-3 px-4 py-3 border-b border-zinc-800 text-xs uppercase tracking-wider text-zinc-500">
+      <section className="rounded-lg border border-zinc-800 bg-zinc-900/30 overflow-hidden relative">
+        <header className="sticky top-0 z-10 bg-zinc-900/95 backdrop-blur grid grid-cols-12 gap-3 px-4 py-3 border-b border-zinc-800 text-xs uppercase tracking-wider text-zinc-500 shadow-sm">
           <span className="col-span-2">Time</span>
           <span className="col-span-2">Verdict</span>
           <span className="col-span-4">Request</span>
