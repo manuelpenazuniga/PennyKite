@@ -51,12 +51,12 @@ Purpose: Verify that backlog statuses match the actual state of the repo.
 
 | Field | Value |
 |---|---|
-| Backlog status | `pending` |
+| Backlog status | `done` |
 | Artifacts expected | `documentation/notes/demo-dry-run.md` (private recording + notes) |
-| Artifacts found | ❌ File does not exist; `documentation/notes/` does not exist |
-| Blocker | PK-D3-07 is in progress — dry-run cannot proceed without the demo script |
+| Artifacts found | ✅ `documentation/notes/demo-dry-run.md` committed; private transcripts saved under gitignored `docs/demo-dry-run/` |
+| Verification | Two `PENNYKITE_DEMO_AUTO=1 ./demo/run-demo.sh` takes passed; protected path denied with `deny_loop` on call 4 |
 | Risk | **CRITICAL** |
-| Recommendation | Blocked by PK-D3-07. Will unblock once demo script is complete. |
+| Recommendation | Use PK-D4-01 for the targeted polish fixes found during the dry-run. |
 
 ---
 
@@ -139,8 +139,8 @@ Purpose: Verify that backlog statuses match the actual state of the repo.
 
 | Risk | Entry | Issue |
 |---|---|---|
-| CRITICAL | PK-D3-10 | Demo script is ready; dry-run notes/recording still pending |
+| CRITICAL | PK-D4-01 | Dry-run found polish issues: savings metric under-reports, auto cleanup closes URLs, browser capture still pending |
 | MEDIUM | PK-D4-04 | Screenshots and hosted links not yet possible (deployment pending) |
 | LOW | PK-D4-07 | Draft docs meet all word/Mermaid criteria; pending finalization after PK-D4-01 |
 | LOW | PK-CI-04 | `.env.example` template committed; deployed addresses pending PK-D1-07 |
-| LOW | PK-D3-07, PK-D3-08, PK-D3-09, PK-CI-06, PK-CI-07, PK-CI-08 | All confirmed done and correct |
+| LOW | PK-D3-07, PK-D3-08, PK-D3-09, PK-D3-10, PK-CI-06, PK-CI-07, PK-CI-08 | All confirmed done and correct |

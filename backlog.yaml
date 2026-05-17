@@ -1013,9 +1013,10 @@ tasks:
       - "Recording saved (private, NOT committed to repo)"
       - "Notes on weak spots committed under documentation/notes/demo-dry-run.md"
     artifacts: ["documentation/notes/demo-dry-run.md"]
-    status: pending
+    status: done
     priority: critical
     tags: [demo, video]
+    notes: "Ran two full local demo dry-runs with PENNYKITE_DEMO_AUTO=1; private transcripts saved under gitignored docs/demo-dry-run/take-1.log and take-2.log. Both takes exited 0: unprotected spent $0.4000 across 8 approved calls; protected approved 3 calls then blocked call 4 with deny_loop at $0.1500. No listeners remained on 4100/8787/3000 after cleanup. Notes committed under documentation/notes/demo-dry-run.md. Remaining screen-polish items are intentionally deferred to PK-D4-01/PK-D4-06: improve displayed savings metric, capture browser UI video, and narrate mock_pending Kite revocation."
 
   # =====================================================
   # PHASE 4 — Day 4 (23 May): polish + hosting + video
