@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `documentation/architecture.md`: architecture overview — crate decomposition, proxy flow, SQLite schema, dashboard, policy.
 - `documentation/kite-integration.md`: Kite integration doc — Agent Passport, PennyKiteAttestor, attestation flow, kill-switch, mock revocation status.
 - `documentation/x402-flow.md`: x402 protocol flow with Mermaid sequence diagram, EIP-3009 signing, deny flows.
+- `sdk/python`: local Python SDK wrapper with `PennyKiteClient`, context-manager support, and typed 402 denial exceptions.
 
 ## [0.1.0] — 2026-05-25 (planned)
 

@@ -980,9 +980,10 @@ tasks:
       - "`with PennyKiteClient(session_id=...)` works"
       - "Raises typed exceptions on PennyKite-originated 402"
     artifacts: ["sdk/python/pennykite/**", "sdk/python/pyproject.toml"]
-    status: pending
+    status: done
     priority: medium
     tags: [python, sdk]
+    notes: "Implemented local sdk/python package with pyproject.toml, PennyKiteClient context manager, .get/.post/.request wrappers over httpx, automatic x-pennykite-session header injection, path/query routing through the configured proxy, and typed PennyKiteBudgetExceeded / PennyKiteLoopDetected / PennyKiteDenied exceptions for PennyKite-originated 402 bodies. Added unittest coverage for import/context manager, routing/header forwarding, JSON POST, typed budget/loop/generic denials, and passthrough for non-PennyKite 402. Verified with py_compile and python3 -m venv /private/tmp/pennykite-sdk-test && pip install -e sdk/python && python -m unittest discover -s sdk/python/tests."
 
   - id: PK-D3-09
     phase: phase-3

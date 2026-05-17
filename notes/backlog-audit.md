@@ -1,8 +1,8 @@
 # Backlog Consistency Audit
 
 Initial audit date: 2026-05-16  
-Last updated: 2026-05-16 (post docs/env work)  
-Purpose: Verify that backlog statuses match the actual state of the repo. No statuses were changed.
+Last updated: 2026-05-17 (post demo script + Python SDK work)
+Purpose: Verify that backlog statuses match the actual state of the repo.
 
 ---
 
@@ -23,13 +23,13 @@ Purpose: Verify that backlog statuses match the actual state of the repo. No sta
 
 | Field | Value |
 |---|---|
-| Backlog status | `pending` |
+| Backlog status | `done` |
 | Artifacts expected | `demo/run-demo.sh` |
-| Artifacts found | ❌ `demo/run-demo.sh` does not exist |
-| Current work | Another agent is actively implementing this — do not touch `demo/**` |
-| Downstream blockers | PK-D3-08, PK-D3-10 depend on this; PK-D4-01 and PK-D4-05 depend on PK-D3-10 |
-| Risk | **CRITICAL** |
-| Recommendation | In-progress by another agent. `documentation/demo-runbook.md` is a manual stopgap. |
+| Artifacts found | ✅ `demo/run-demo.sh` exists and is executable |
+| Verification | `PENNYKITE_DEMO_AUTO=1 ./demo/run-demo.sh` passed; protected run blocks with `deny_loop` |
+| Downstream blockers | PK-D3-10 remains unblocked; PK-D4-01 and PK-D4-05 depend on PK-D3-10 |
+| Risk | **LOW** |
+| Recommendation | Status confirmed correct. No action needed. |
 
 ---
 
@@ -37,12 +37,13 @@ Purpose: Verify that backlog statuses match the actual state of the repo. No sta
 
 | Field | Value |
 |---|---|
-| Backlog status | `pending` |
+| Backlog status | `done` |
 | Artifacts expected | `sdk/python/pennykite/**`, `sdk/python/pyproject.toml` |
-| Artifacts found | ❌ `sdk/` directory does not exist |
-| README fix applied | ✅ README SDK section now explicitly labelled "planned — PK-D3-08" with "not yet installable" comments; false executable claim removed |
-| Risk | **MEDIUM** (README false claim resolved) |
-| Recommendation | SDK implementation still pending. README no longer misleads. |
+| Artifacts found | ✅ Local Python package exists under `sdk/python/` |
+| README fix applied | ✅ README now states Python SDK exists locally; TypeScript SDK remains planned |
+| Verification | `pip install -e sdk/python` and `python -m unittest discover -s sdk/python/tests` pass |
+| Risk | **LOW** |
+| Recommendation | Status confirmed correct. No action needed. |
 
 ---
 
@@ -138,10 +139,8 @@ Purpose: Verify that backlog statuses match the actual state of the repo. No sta
 
 | Risk | Entry | Issue |
 |---|---|---|
-| CRITICAL | PK-D3-07 | `demo/run-demo.sh` in progress by another agent — blocks dry-run and final recording |
-| CRITICAL | PK-D3-10 | Blocked by PK-D3-07; no dry-run notes yet |
+| CRITICAL | PK-D3-10 | Demo script is ready; dry-run notes/recording still pending |
 | MEDIUM | PK-D4-04 | Screenshots and hosted links not yet possible (deployment pending) |
-| LOW | PK-D3-08 | SDK not implemented but README false claim resolved |
 | LOW | PK-D4-07 | Draft docs meet all word/Mermaid criteria; pending finalization after PK-D4-01 |
 | LOW | PK-CI-04 | `.env.example` template committed; deployed addresses pending PK-D1-07 |
-| LOW | PK-D3-09, PK-CI-06, PK-CI-07, PK-CI-08 | All confirmed done and correct |
+| LOW | PK-D3-07, PK-D3-08, PK-D3-09, PK-CI-06, PK-CI-07, PK-CI-08 | All confirmed done and correct |
