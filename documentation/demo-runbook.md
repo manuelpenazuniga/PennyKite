@@ -8,7 +8,7 @@ This is a manual runbook. For a one-command script see `PK-D3-07` (pending).
 ## Prerequisites
 
 ```bash
-node --version   # >= 22
+node --version   # >= 20
 rustc --version  # >= 1.80
 ```
 
@@ -24,7 +24,7 @@ cd demo/target-api && npm run start
 
 Expected output:
 ```
-PennyKite demo target API listening on :4100
+[demo-target-api] listening on :4100 (price=$0.0500 USDC @ eip155:84532)
 ```
 
 ---
@@ -119,7 +119,7 @@ curl -i -X POST http://127.0.0.1:8787/api/sessions/demo-session/pause
 Expected response:
 ```
 HTTP/1.1 202 Accepted
-{"status":"paused"}
+{"status":"accepted","session_id":"demo-session","kite_revocation":"mock_pending"}
 ```
 
 The kill-switch page should refresh and show `demo-session` as paused.

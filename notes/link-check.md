@@ -46,4 +46,4 @@ These references are in the pre-existing README and describe planned v0.1.0 cont
 
 ## Conclusion
 
-No errors found in the content added by recent doc commits (TASK 1–3). Two pre-existing aspirational references are documented above. No changes were made to correct them — they are correctly tracked as pending in `backlog.yaml`.
+TASK 1–4 docs were rechecked after correcting demo-runbook expected outputs. Inaccuracies fixed: Node version floor (22→20), target API startup log, and pause response body. Two pre-existing aspirational references (`run-demo.sh`, `.env.example`) remain unresolved and are correctly tracked as pending in `backlog.yaml`.
