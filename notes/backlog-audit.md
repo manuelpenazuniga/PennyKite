@@ -1,6 +1,7 @@
 # Backlog Consistency Audit
 
-Date: 2026-05-16  
+Initial audit date: 2026-05-16  
+Last updated: 2026-05-16 (post docs/env work)  
 Purpose: Verify that backlog statuses match the actual state of the repo. No statuses were changed.
 
 ---
@@ -24,10 +25,11 @@ Purpose: Verify that backlog statuses match the actual state of the repo. No sta
 |---|---|
 | Backlog status | `pending` |
 | Artifacts expected | `demo/run-demo.sh` |
-| Artifacts found | ❌ `demo/` contains only `runaway-agent/` and `target-api/` — `run-demo.sh` does not exist |
+| Artifacts found | ❌ `demo/run-demo.sh` does not exist |
+| Current work | Another agent is actively implementing this — do not touch `demo/**` |
 | Downstream blockers | PK-D3-08, PK-D3-10 depend on this; PK-D4-01 and PK-D4-05 depend on PK-D3-10 |
 | Risk | **CRITICAL** |
-| Recommendation | This is the highest-priority implementation gap for demo readiness. The manual runbook at `documentation/demo-runbook.md` is a stopgap only. |
+| Recommendation | In-progress by another agent. `documentation/demo-runbook.md` is a manual stopgap. |
 
 ---
 
@@ -38,9 +40,9 @@ Purpose: Verify that backlog statuses match the actual state of the repo. No sta
 | Backlog status | `pending` |
 | Artifacts expected | `sdk/python/pennykite/**`, `sdk/python/pyproject.toml` |
 | Artifacts found | ❌ `sdk/` directory does not exist |
-| Additional risk | `README.md` SDK section shows working Python code (`from pennykite import PennyKiteClient`) which is not importable |
-| Risk | **HIGH** |
-| Recommendation | README SDK section is aspirational, not implemented. Flag this discrepancy before submission. |
+| README fix applied | ✅ README SDK section now explicitly labelled "planned — PK-D3-08" with "not yet installable" comments; false executable claim removed |
+| Risk | **MEDIUM** (README false claim resolved) |
+| Recommendation | SDK implementation still pending. README no longer misleads. |
 
 ---
 
@@ -50,10 +52,10 @@ Purpose: Verify that backlog statuses match the actual state of the repo. No sta
 |---|---|
 | Backlog status | `pending` |
 | Artifacts expected | `documentation/notes/demo-dry-run.md` (private recording + notes) |
-| Artifacts found | ❌ `documentation/notes/` does not exist; artifact path uses a nested `notes/` inside `documentation/` |
-| Blocker | PK-D3-07 is pending — dry-run cannot proceed without the demo script |
+| Artifacts found | ❌ File does not exist; `documentation/notes/` does not exist |
+| Blocker | PK-D3-07 is in progress — dry-run cannot proceed without the demo script |
 | Risk | **CRITICAL** |
-| Recommendation | Blocked by PK-D3-07. Cannot unblock without `demo/run-demo.sh` or equivalent. |
+| Recommendation | Blocked by PK-D3-07. Will unblock once demo script is complete. |
 
 ---
 
@@ -63,7 +65,7 @@ Purpose: Verify that backlog statuses match the actual state of the repo. No sta
 |---|---|
 | Backlog status | `pending` |
 | Artifacts expected | `README.md`, `documentation/img/**` |
-| Artifacts found | ✅ `README.md` exists and is actively maintained; ❌ `documentation/img/` does not exist; no screenshots committed |
+| Artifacts found | ✅ `README.md` actively maintained; ❌ `documentation/img/` does not exist; no screenshots committed |
 | Upstream blockers | PK-D4-02 (hosted proxy) and PK-D4-03 (hosted dashboard) are both pending |
 | Risk | **MEDIUM** |
 | Recommendation | README content is solid. Screenshots and hosted-demo links cannot be added until deployment tasks complete. |
@@ -76,10 +78,10 @@ Purpose: Verify that backlog statuses match the actual state of the repo. No sta
 |---|---|
 | Backlog status | `pending` |
 | Artifacts expected | `documentation/architecture.md` (≥600 words), `documentation/kite-integration.md` (≥400 words), `documentation/x402-flow.md` (≥400 words with Mermaid) |
-| Artifacts found | ❌ None of these files exist — `documentation/` only contains `demo-runbook.md` (created today) |
-| Upstream blockers | PK-D4-01 (bug fixes from dry-run) is pending |
-| Risk | **HIGH** |
-| Recommendation | No progress made. Significant writing effort required (1400+ words + diagrams). Blocked by dry-run. |
+| Artifacts found | ✅ All three files now exist: `architecture.md` (1132w), `kite-integration.md` (810w), `x402-flow.md` (869w, Mermaid sequenceDiagram included) |
+| Upstream blockers | PK-D4-01 (bug fixes from dry-run) is still pending — finalization after dry-run |
+| Risk | **LOW** (drafts meet word count and Mermaid requirements) |
+| Recommendation | Drafts are complete and accurate. Status remains `pending` because PK-D4-01 is a dependency for finalization. Do not mark done yet. |
 
 ---
 
@@ -89,10 +91,10 @@ Purpose: Verify that backlog statuses match the actual state of the repo. No sta
 |---|---|
 | Backlog status | `pending` |
 | Artifacts expected | `.env.example` with all required keys |
-| Artifacts found | ❌ `.env.example` does not exist |
-| Additional risk | `README.md` Quickstart says `cp .env.example .env` — this command fails on a fresh clone |
-| Risk | **HIGH** |
-| Recommendation | DX blocker. Any contributor following the README quickstart will hit this immediately. Should be created before submission. Required keys per backlog: `KITE_RPC_URL`, `KITE_CHAIN_ID`, `KITE_PRIVATE_KEY`, `SESSION_KEY`, `PENNYKITE_ATTESTOR_ADDRESS`, `PAY_TO`, `FACILITATOR_URL`. |
+| Artifacts found | ✅ `.env.example` now exists with all required keys plus `PENNYKITE_PROXY_URL`, `DATABASE_PATH`, `USDC_CONTRACT` |
+| Remaining blocker | Real deployed addresses (`PENNYKITE_ATTESTOR_ADDRESS`, `PAY_TO`, `FACILITATOR_URL`) are placeholders — pending `PK-D1-07` |
+| Risk | **LOW** (DX blocker resolved for local dev; deployment addresses remain TBD) |
+| Recommendation | Status remains `pending` per backlog dependency on PK-D1-07. Template is usable for local development now. |
 
 ---
 
@@ -102,7 +104,7 @@ Purpose: Verify that backlog statuses match the actual state of the repo. No sta
 |---|---|
 | Backlog status | `done` |
 | Artifacts expected | `/CHANGELOG.md` in Keep a Changelog format |
-| Artifacts found | ✅ `CHANGELOG.md` exists with `[Unreleased]` and `[0.1.0]` sections, maintained |
+| Artifacts found | ✅ `CHANGELOG.md` exists with `[Unreleased]` and `[0.1.0]` sections, actively maintained |
 | Risk | **LOW** |
 | Recommendation | Status confirmed correct. |
 
@@ -132,14 +134,14 @@ Purpose: Verify that backlog statuses match the actual state of the repo. No sta
 
 ---
 
-## Risk summary
+## Risk summary (updated)
 
 | Risk | Entry | Issue |
 |---|---|---|
-| CRITICAL | PK-D3-07 | `demo/run-demo.sh` missing — blocks dry-run and final recording |
-| CRITICAL | PK-D3-10 | Blocked by PK-D3-07; no dry-run notes |
-| HIGH | PK-D3-08 | Python SDK not implemented; README implies it works |
-| HIGH | PK-D4-07 | Three architecture docs not started |
-| HIGH | PK-CI-04 | `.env.example` missing; README quickstart broken on fresh clone |
+| CRITICAL | PK-D3-07 | `demo/run-demo.sh` in progress by another agent — blocks dry-run and final recording |
+| CRITICAL | PK-D3-10 | Blocked by PK-D3-07; no dry-run notes yet |
 | MEDIUM | PK-D4-04 | Screenshots and hosted links not yet possible (deployment pending) |
+| LOW | PK-D3-08 | SDK not implemented but README false claim resolved |
+| LOW | PK-D4-07 | Draft docs meet all word/Mermaid criteria; pending finalization after PK-D4-01 |
+| LOW | PK-CI-04 | `.env.example` template committed; deployed addresses pending PK-D1-07 |
 | LOW | PK-D3-09, PK-CI-06, PK-CI-07, PK-CI-08 | All confirmed done and correct |

@@ -46,4 +46,4 @@ These references are in the pre-existing README and describe planned v0.1.0 cont
 
 ## Conclusion
 
-TASK 1–4 docs were rechecked after correcting demo-runbook expected outputs. Inaccuracies fixed: Node version floor (22→20), target API startup log, and pause response body. Two pre-existing aspirational references (`run-demo.sh`, `.env.example`) remain unresolved and are correctly tracked as pending in `backlog.yaml`.
+TASK 1–4 docs were rechecked after correcting demo-runbook expected outputs. Inaccuracies fixed: Node version floor (22→20), target API startup log, and pause response body. `.env.example` has since been created (DX blocker resolved for local dev). Architecture docs at `documentation/architecture.md`, `documentation/kite-integration.md`, and `documentation/x402-flow.md` have been created. `run-demo.sh` is in progress by another agent and remains aspirational in the README.
