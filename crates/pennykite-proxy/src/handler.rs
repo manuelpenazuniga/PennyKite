@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     str::FromStr,
     sync::{Arc, Mutex},
     time::{SystemTime, UNIX_EPOCH},
@@ -18,6 +19,7 @@ use axum::{
 };
 use chrono::Utc;
 use pennykite_cost::{amount_to_usd, select_requirement};
+use pennykite_detect::{LoopDetector, RequestFingerprint};
 use pennykite_ledger::{Ledger, LedgerError};
 use pennykite_providers::{
     eip3009::{sign_transfer_with_authorization, TransferWithAuthorization},
@@ -40,6 +42,7 @@ pub struct AppState {
     pub policy: Arc<Policy>,
     pub upstream_client: Arc<dyn UpstreamClient>,
     pub ledger_lock: Arc<Mutex<()>>,
+    pub loop_detectors: Arc<Mutex<HashMap<String, LoopDetector>>>,
     pub signer: PrivateKeySigner,
     pub usdc_contract: Address,
 }
@@ -156,6 +159,18 @@ async fn proxy_inner(
     let session_id = session_id(&headers, &state.policy);
     let path_and_query = upstream_path_and_query(&uri);
     let upstream_url = format!("{}{}", state.upstream.trim_end_matches('/'), path_and_query);
+    if observe_loop(&state, &session_id, &method, &path_and_query, &body) {
+        let decision = record_decision(
+            &state,
+            &session_id,
+            &request_key(&method, &uri),
+            0.0,
+            Verdict::DenyLoop,
+            "loop detected",
+        )?;
+        return Ok(deny_response(&decision));
+    }
+
     let first = state
         .upstream_client
         .send(&method, &upstream_url, &headers, body.clone(), None)
@@ -369,6 +384,34 @@ fn decision_hash(decision: &Decision) -> Result<String, String> {
     Ok(format!("0x{}", hex::encode(hash)))
 }
 
+fn observe_loop(
+    state: &AppState,
+    session_id: &str,
+    method: &Method,
+    path: &str,
+    body: &Bytes,
+) -> bool {
+    let fingerprint = RequestFingerprint {
+        method: method.to_string(),
+        host: state.upstream.clone(),
+        path: path.into(),
+        body_hash: hash_bytes(body),
+    };
+    let mut detectors = state
+        .loop_detectors
+        .lock()
+        .expect("loop detector lock poisoned");
+    let detector = detectors
+        .entry(session_id.to_string())
+        .or_insert_with(|| LoopDetector::new(state.policy.loop_detection.clone()));
+    detector.observe(fingerprint)
+}
+
+fn hash_bytes(bytes: &[u8]) -> String {
+    let hash = Sha3_256::digest(bytes);
+    format!("0x{}", hex::encode(hash))
+}
+
 fn deny_response(decision: &Decision) -> Response<Body> {
     json_response(
         StatusCode::PAYMENT_REQUIRED,
@@ -501,6 +544,7 @@ kite_passport:
                 price: price.to_string(),
             }),
             ledger_lock: Arc::new(Mutex::new(())),
+            loop_detectors: Arc::new(Mutex::new(HashMap::new())),
             signer: "0x59c6995e998f97a5a0044966f0945389d358f57d07535c8be9e515a7c99316c5"
                 .parse()
                 .unwrap(),
@@ -605,5 +649,45 @@ kite_passport:
         let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
         assert_eq!(body["verdict"], json!("deny_budget"));
         assert_eq!(body["reason"], json!("per-request cap exceeded"));
+    }
+
+    #[tokio::test]
+    async fn repeated_identical_requests_return_deny_loop() {
+        let state = test_state("50000", test_policy(1.0, 0.5));
+        let app = app(state);
+
+        for _ in 0..3 {
+            let response = app
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .uri("/proxy/paid")
+                        .header(SESSION_HEADER, "loop-session")
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::OK);
+        }
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/proxy/paid")
+                    .header(SESSION_HEADER, "loop-session")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::PAYMENT_REQUIRED);
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(body["verdict"], json!("deny_loop"));
+        assert_eq!(body["reason"], json!("loop detected"));
     }
 }

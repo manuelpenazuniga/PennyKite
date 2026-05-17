@@ -9,6 +9,7 @@ use clap::Parser;
 use pennykite_providers::policy::load_policy;
 use pennykite_proxy::{app, handler::ReqwestUpstream, AppState};
 use std::{
+    collections::HashMap,
     str::FromStr,
     sync::{Arc, Mutex},
 };
@@ -70,6 +71,7 @@ async fn main() -> Result<()> {
         policy: Arc::new(policy),
         upstream_client: Arc::new(ReqwestUpstream::new()),
         ledger_lock: Arc::new(Mutex::new(())),
+        loop_detectors: Arc::new(Mutex::new(HashMap::new())),
         signer,
         usdc_contract,
     };

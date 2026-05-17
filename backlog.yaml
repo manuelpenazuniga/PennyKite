@@ -868,7 +868,8 @@ tasks:
       - "DenyLoop visible in dashboard with red badge"
       - "Attestation tx recorded for blocked decision"
     artifacts: ["crates/pennykite-proxy/src/handler.rs"]
-    status: pending
+    status: done
+    notes: "Loop detector is wired into the proxy per session before upstream forwarding. Repeated identical requests short-circuit with 402 JSON {verdict: deny_loop, reason: loop detected}, record a Decision row with SHA3-256 decision_hash, and avoid PAYMENT-SIGNATURE/replay. Added proxy unit test for the 4th identical request triggering DenyLoop and live smoke against demo target API returned deny_loop. Dashboard red badge will render once PK-D2-11 consumes real decisions; attestation tx for blocked decisions remains gated by PK-D2-09."
     priority: critical
     tags: [rust]
 
