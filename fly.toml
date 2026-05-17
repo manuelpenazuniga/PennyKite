@@ -1,0 +1,29 @@
+app = "pennykite-proxy-demo"
+primary_region = "iad"
+
+[build]
+  dockerfile = "crates/pennykite-proxy/Dockerfile"
+
+[env]
+  DATABASE_PATH = "/data/pennykite.db"
+  PENNYKITE_POLICY = "/app/policy/examples/conservative.yaml"
+  USDC_CONTRACT = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+
+[mounts]
+  source = "pennykite_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8787
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "3s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/health"

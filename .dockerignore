@@ -1,0 +1,36 @@
+.git
+.gitignore
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# Build outputs
+target/
+**/target/
+
+# Node / Next
+node_modules/
+.next/
+dashboard/node_modules/
+dashboard/.next/
+demo/target-api/node_modules/
+
+# Python local state
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Private/local materials
+docs/
+resources/
+.claude/
+.codex*
+
+# Runtime artifacts
+*.db
+*.sqlite
+*.sqlite3
+*.log

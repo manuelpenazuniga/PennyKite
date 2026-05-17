@@ -1055,6 +1055,7 @@ tasks:
     status: pending
     priority: critical
     tags: [hosting, deploy]
+    notes: "Prepared deploy artifacts: crates/pennykite-proxy/Dockerfile, root .dockerignore, and fly.toml. Dockerfile builds the Rust proxy from the workspace, copies policy presets, runs as non-root, exposes /health, and maps runtime env vars/secrets to proxy CLI flags. Verified cargo build -p pennykite-proxy and static config grep. Docker image build could not run locally because Docker daemon is not running. Remaining acceptance criteria are gated by a Fly/Railway account, secrets (PENNYKITE_UPSTREAM, KITE_PRIVATE_KEY, USDC_CONTRACT if non-default), a persistent volume, public HTTPS URL, README URL update, and smoke test from the local agent against that public proxy."
 
   - id: PK-D4-03
     phase: phase-4

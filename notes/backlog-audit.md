@@ -60,16 +60,29 @@ Purpose: Verify that backlog statuses match the actual state of the repo.
 
 ---
 
+## PK-D4-02 — Hosted proxy
+
+| Field | Value |
+|---|---|
+| Backlog status | `pending` |
+| Artifacts expected | `crates/pennykite-proxy/Dockerfile`, `fly.toml or railway.json` |
+| Artifacts found | ✅ `crates/pennykite-proxy/Dockerfile`, `.dockerignore`, and `fly.toml` exist |
+| Remaining blockers | Public deploy URL, Fly/Railway secrets, persistent volume, README URL update, and local-agent smoke against public proxy |
+| Risk | **MEDIUM** |
+| Recommendation | Deploy when account/secrets are available; do not mark done until `/health` passes on public HTTPS. |
+
+---
+
 ## PK-D4-04 — Final README pass with screenshots
 
 | Field | Value |
 |---|---|
-| Backlog status | `done` |
+| Backlog status | `pending` |
 | Artifacts expected | `README.md`, `documentation/img/**` |
 | Artifacts found | ✅ `README.md` actively maintained; ❌ `documentation/img/` does not exist; no screenshots committed |
 | Upstream blockers | PK-D4-02 (hosted proxy) and PK-D4-03 (hosted dashboard) are both pending |
 | Risk | **MEDIUM** |
-| Recommendation | README content is solid. Screenshots and hosted-demo links cannot be added until deployment tasks complete. |
+| Recommendation | README content is solid. Screenshots and hosted-demo links cannot be added until deployment tasks complete; keep pending. |
 
 ---
 
@@ -139,6 +152,7 @@ Purpose: Verify that backlog statuses match the actual state of the repo.
 
 | Risk | Entry | Issue |
 |---|---|---|
+| MEDIUM | PK-D4-02 | Deploy artifacts are prepared, but public proxy URL and smoke test need Fly/Railway credentials/secrets |
 | MEDIUM | PK-D4-04 | Screenshots and hosted links not yet possible (deployment pending) |
 | LOW | PK-CI-04 | `.env.example` template committed; deployed addresses pending PK-D1-07 |
 | LOW | PK-D3-07, PK-D3-08, PK-D3-09, PK-D3-10, PK-D4-01, PK-D4-07, PK-CI-06, PK-CI-07, PK-CI-08 | All confirmed done and correct |
