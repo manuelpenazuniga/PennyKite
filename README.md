@@ -160,6 +160,33 @@ WITH PennyKite:
 
 ---
 
+## Dashboard control plane
+
+The Next.js dashboard (`http://localhost:3000`) exposes three pages, all backed by the proxy's REST API — the dashboard never reads SQLite directly.
+
+| Page | URL | What it shows |
+|---|---|---|
+| **Live feed** | `/` | Real-time stream of all proxy decisions (APPROVE / DENY) as they arrive |
+| **Session detail** | `/sessions/[id]` | Per-session spend, request timeline, and full decision history |
+| **Kill-switch** | `/kill-switch` | List of active sessions with one-click pause controls |
+
+### Kill-switch behaviour
+
+Clicking **Pause** on a session:
+
+1. The dashboard sends `POST /api/sessions/{id}/pause` to the proxy.
+2. The proxy marks the session `paused` in SQLite.
+3. Every subsequent payment request for that session is rejected immediately:
+
+```
+HTTP/1.1 402 Payment Required
+{"reason":"session is paused"}
+```
+
+> **On-chain revocation status:** Revoking the Kite Passport session key on-chain is currently **mock / best-effort**. Full on-chain revocation will be wired to the Kite revocation API once it is available on testnet.
+
+---
+
 ## Project structure
 
 ```
@@ -252,6 +279,77 @@ npm run dev
 ```
 
 </details>
+
+---
+
+## Local demo
+
+Step-by-step walkthrough of the full control-plane flow without the one-command script.
+
+### 1. Start the target API
+
+```bash
+cd demo/target-api && npm run start
+# Listens on :4100
+```
+
+### 2. Start the proxy
+
+```bash
+cargo run -p pennykite-proxy -- \
+  --listen 127.0.0.1:8787 \
+  --policy policy/examples/conservative.yaml \
+  --upstream http://127.0.0.1:4100 \
+  --db /tmp/pennykite-demo.db
+```
+
+### 3. Start the dashboard
+
+```bash
+cd dashboard && PENNYKITE_PROXY_URL=http://127.0.0.1:8787 npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+### 4. Generate a session and trigger an approval
+
+```bash
+curl -i -H 'x-pennykite-session: demo-session' \
+  http://127.0.0.1:8787/proxy/predict/demo-1
+# → 200 OK (APPROVE) — decision appears on the live feed
+```
+
+### 5. Explore the dashboard
+
+| URL | What you see |
+|---|---|
+| `http://localhost:3000` | Live feed with the `demo-session` APPROVE event |
+| `http://localhost:3000/sessions/demo-session` | Session detail — spend timeline and decisions |
+| `http://localhost:3000/kill-switch` | Pause controls for all active sessions |
+
+### 6. Pause the session
+
+```bash
+curl -i -X POST http://127.0.0.1:8787/api/sessions/demo-session/pause
+# → 200 OK
+```
+
+### 7. Verify the session is blocked
+
+```bash
+curl -i -H 'x-pennykite-session: demo-session' \
+  http://127.0.0.1:8787/proxy/predict/demo-after-pause
+# → HTTP/1.1 402 Payment Required
+# {"reason":"session is paused"}
+```
+
+### Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| Dashboard shows no data | Verify `PENNYKITE_PROXY_URL=http://127.0.0.1:8787` — the dashboard reads from the proxy REST API, not directly from SQLite |
+| Port 8787 already in use | Change `--listen 127.0.0.1:<port>` and update `PENNYKITE_PROXY_URL` to match |
+| Port 3000 already in use | Run `PORT=3001 npm run dev` inside `dashboard/` |
 
 ---
 
