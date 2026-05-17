@@ -235,10 +235,11 @@ def run_protected(
     spent = 0.0
     approved = 0
     blocked = 0
-    simulated_spend = 0.0
+    projected_runaway_spend = 0.0
     for i in range(1, max_calls + 1):
         result = call_protected(proxy_url, session_id, match_id or f"match-{i}")
-        simulated_spend += 0.05  # what the agent would have paid unprotected
+        if result.cost_usd > 0:
+            projected_runaway_spend = result.cost_usd * max_calls
         if result.blocked:
             blocked += 1
             print_call(i, result, spent)
@@ -263,7 +264,7 @@ def run_protected(
         approved=approved,
         blocked=blocked,
         spent_usd=spent,
-        runaway_simulated_spend_usd=simulated_spend,
+        runaway_simulated_spend_usd=projected_runaway_spend or spent,
     )
 
 

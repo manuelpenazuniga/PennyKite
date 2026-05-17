@@ -57,7 +57,8 @@ Expected output:
 - The first few calls succeed (approve verdicts).
 - Around call #4 the loop detector fires; the proxy returns 402 with
   `{"verdict": "deny_loop", "reason": "..."}` and the agent halts.
-- The summary shows the saved amount compared to a runaway baseline.
+- The summary compares actual spend against the full projected runaway
+  baseline for the configured `--calls`.
 
 ## CLI flags
 

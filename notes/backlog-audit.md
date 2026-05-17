@@ -27,7 +27,7 @@ Purpose: Verify that backlog statuses match the actual state of the repo.
 | Artifacts expected | `demo/run-demo.sh` |
 | Artifacts found | ✅ `demo/run-demo.sh` exists and is executable |
 | Verification | `PENNYKITE_DEMO_AUTO=1 ./demo/run-demo.sh` passed; protected run blocks with `deny_loop` |
-| Downstream blockers | PK-D3-10 remains unblocked; PK-D4-01 and PK-D4-05 depend on PK-D3-10 |
+| Downstream blockers | PK-D4-05 remains downstream of PK-D3-10; PK-D4-01 is complete |
 | Risk | **LOW** |
 | Recommendation | Status confirmed correct. No action needed. |
 
@@ -80,9 +80,9 @@ Purpose: Verify that backlog statuses match the actual state of the repo.
 | Backlog status | `pending` |
 | Artifacts expected | `documentation/architecture.md` (≥600 words), `documentation/kite-integration.md` (≥400 words), `documentation/x402-flow.md` (≥400 words with Mermaid) |
 | Artifacts found | ✅ All three files now exist: `architecture.md` (1132w), `kite-integration.md` (810w), `x402-flow.md` (869w, Mermaid sequenceDiagram included) |
-| Upstream blockers | PK-D4-01 (bug fixes from dry-run) is still pending — finalization after dry-run |
+| Upstream blockers | None; PK-D4-01 is complete |
 | Risk | **LOW** (drafts meet word count and Mermaid requirements) |
-| Recommendation | Drafts are complete and accurate. Status remains `pending` because PK-D4-01 is a dependency for finalization. Do not mark done yet. |
+| Recommendation | Docs can be finalized in PK-D4-07 now that dry-run fixes are complete. |
 
 ---
 
@@ -139,8 +139,7 @@ Purpose: Verify that backlog statuses match the actual state of the repo.
 
 | Risk | Entry | Issue |
 |---|---|---|
-| CRITICAL | PK-D4-01 | Dry-run found polish issues: savings metric under-reports, auto cleanup closes URLs, browser capture still pending |
 | MEDIUM | PK-D4-04 | Screenshots and hosted links not yet possible (deployment pending) |
 | LOW | PK-D4-07 | Draft docs meet all word/Mermaid criteria; pending finalization after PK-D4-01 |
 | LOW | PK-CI-04 | `.env.example` template committed; deployed addresses pending PK-D1-07 |
-| LOW | PK-D3-07, PK-D3-08, PK-D3-09, PK-D3-10, PK-CI-06, PK-CI-07, PK-CI-08 | All confirmed done and correct |
+| LOW | PK-D3-07, PK-D3-08, PK-D3-09, PK-D3-10, PK-D4-01, PK-CI-06, PK-CI-07, PK-CI-08 | All confirmed done and correct |

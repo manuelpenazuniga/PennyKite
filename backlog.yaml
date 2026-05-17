@@ -1032,9 +1032,10 @@ tasks:
       - "Top 3 issues from dry-run resolved"
       - "Demo runs without errors twice in a row"
     artifacts: []
-    status: pending
+    status: done
     priority: critical
     tags: [polish]
+    notes: "Resolved the top dry-run issues without adding new product scope: protected runaway summary now compares spend against the full projected max_calls horizon ($0.4000 baseline, $0.1500 actual, $0.2500 saved in verification), demo script supports PENNYKITE_DEMO_HOLD=1 to keep services alive for capture until interrupted, and the sandbox port-bind caveat is documented in demo-dry-run notes. Verified with bash -n demo/run-demo.sh, python3 -m py_compile demo/runaway-agent/agent.py, git diff --check, and two consecutive PENNYKITE_DEMO_AUTO=1 ./demo/run-demo.sh runs outside the sandbox; both exited 0 and left no listeners on 4100/8787/3000."
 
   - id: PK-D4-02
     phase: phase-4

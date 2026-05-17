@@ -190,6 +190,12 @@ print_final_summary() {
 }
 
 pause_before_cleanup() {
+  if [[ "${PENNYKITE_DEMO_HOLD:-0}" == "1" ]]; then
+    info "PENNYKITE_DEMO_HOLD=1 set; services will stay up until interrupted."
+    while true; do
+      sleep 3600
+    done
+  fi
   if [[ "${PENNYKITE_DEMO_AUTO:-0}" == "1" || ! -t 0 ]]; then
     return
   fi

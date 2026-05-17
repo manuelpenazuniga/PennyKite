@@ -47,9 +47,9 @@ Observed behavior is correct for the demo: with fixed `--match-id`, the first th
 
 | Priority | Issue | Impact | Suggested owner/task |
 |---|---|---|---|
-| P1 | Protected summary under-reports savings. It reports `$0.0500` saved because it compares against four attempted calls, not the full planned runaway horizon. | Weak video moment; the protection works, but the numeric payoff looks small. | PK-D4-01: compare protected spend against `max_calls * price` or print an additional "projected runaway spend" metric. |
-| P1 | Auto mode cleans up services immediately after printing URLs. | The session detail and dashboard URLs are gone by the time a reviewer opens them from a transcript. | PK-D4-01 / video workflow: run interactively for capture, or add a `PENNYKITE_DEMO_HOLD=1` option. |
-| P2 | Running the script inside the command sandbox can produce a false `Port 4100 is already in use` because local port binding is blocked. | Agent-only friction; normal terminal execution works. | Documented here. For future agent runs, execute the script outside the sandbox. |
+| P1 | Protected summary under-reports savings. It reports `$0.0500` saved because it compares against four attempted calls, not the full planned runaway horizon. | Weak video moment; the protection works, but the numeric payoff looks small. | Fixed in PK-D4-01: protected summary now compares actual spend against the full projected runaway horizon. |
+| P1 | Auto mode cleans up services immediately after printing URLs. | The session detail and dashboard URLs are gone by the time a reviewer opens them from a transcript. | Fixed in PK-D4-01: `PENNYKITE_DEMO_HOLD=1` keeps services alive until interrupted. |
+| P2 | Running the script inside the command sandbox can produce a false `Port 4100 is already in use` because local port binding is blocked. | Agent-only friction; normal terminal execution works. | Documented in PK-D4-01 verification: future agent runs should execute the script outside the sandbox. |
 | P2 | UI was not browser-verified during this task. | Terminal smoke proves backend and script behavior, but final Devpost video still needs visual review of feed, balance widget, session page, and kill-switch. | PK-D4-06: capture browser-based recording. |
 | P3 | Kite attestation/revocation remains `mock_pending`. | Demo narration must be explicit that local kill-switch is enforced in SQLite today while on-chain revocation waits on Kite testnet deploy/API. | PK-D1-07 / PK-D2-09 / PK-D2-13. |
 
