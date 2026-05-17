@@ -1071,6 +1071,7 @@ tasks:
     status: pending
     priority: critical
     tags: [hosting, deploy]
+    notes: "Prepared Vercel deployment artifacts without marking done: dashboard/vercel.json pins install/build/output commands and documentation/deployment/dashboard-vercel.md documents root directory, PENNYKITE_PROXY_URL production env var, CLI deploy flow, and post-deploy curl checks. Verified cd dashboard && npm run build. Remaining acceptance criteria are gated by Vercel project credentials plus a public proxy URL from PK-D4-02; production URL and README update still pending."
 
   - id: PK-D4-04
     phase: phase-4

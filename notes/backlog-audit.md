@@ -73,6 +73,19 @@ Purpose: Verify that backlog statuses match the actual state of the repo.
 
 ---
 
+## PK-D4-03 — Dashboard production deploy
+
+| Field | Value |
+|---|---|
+| Backlog status | `pending` |
+| Artifacts expected | Production Vercel URL and `PENNYKITE_PROXY_URL` wired to public proxy |
+| Artifacts found | ✅ `dashboard/vercel.json` and `documentation/deployment/dashboard-vercel.md` exist; local `npm run build` passes |
+| Remaining blockers | Vercel project credentials, production URL, public proxy URL from PK-D4-02, and live 200 checks |
+| Risk | **MEDIUM** |
+| Recommendation | Deploy after PK-D4-02 has a stable public HTTPS proxy URL. |
+
+---
+
 ## PK-D4-04 — Final README pass with screenshots
 
 | Field | Value |
@@ -153,6 +166,7 @@ Purpose: Verify that backlog statuses match the actual state of the repo.
 | Risk | Entry | Issue |
 |---|---|---|
 | MEDIUM | PK-D4-02 | Deploy artifacts are prepared, but public proxy URL and smoke test need Fly/Railway credentials/secrets |
+| MEDIUM | PK-D4-03 | Vercel deploy config is prepared, but production URL needs Vercel credentials and a public proxy URL |
 | MEDIUM | PK-D4-04 | Screenshots and hosted links not yet possible (deployment pending) |
 | LOW | PK-CI-04 | `.env.example` template committed; deployed addresses pending PK-D1-07 |
 | LOW | PK-D3-07, PK-D3-08, PK-D3-09, PK-D3-10, PK-D4-01, PK-D4-07, PK-CI-06, PK-CI-07, PK-CI-08 | All confirmed done and correct |
