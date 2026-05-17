@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - README: "Dashboard control plane" section documenting live feed, session detail, kill-switch behaviour, and on-chain revocation status.
 - README: "Local demo" section with step-by-step commands for proxy, target API, dashboard, session pause, and expected 402 response.
 - `documentation/demo-runbook.md`: step-by-step local smoke runbook covering approve flow, deny_loop scenario, kill-switch pause, and cleanup.
+- `.env.example`: placeholder environment template with comments for all required keys; real deployed addresses pending PK-D1-07.
 
 ## [0.1.0] — 2026-05-25 (planned)
 

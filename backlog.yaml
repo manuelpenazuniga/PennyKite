@@ -1366,6 +1366,7 @@ tasks:
     status: pending
     priority: high
     tags: [dx]
+    notes: "Template committed with placeholders; final real deployed addresses remain blocked by PK-D1-07. File includes all required keys plus PENNYKITE_PROXY_URL, DATABASE_PATH, and USDC_CONTRACT."
 
   - id: PK-CI-05
     phase: phase-cross
