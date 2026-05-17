@@ -14,7 +14,7 @@ use axum::{
     body::{Body, Bytes},
     extract::{OriginalUri, Path, State},
     http::{HeaderMap, HeaderName, HeaderValue, Method, Response, StatusCode, Uri},
-    routing::{any, get},
+    routing::{any, get, post},
     Json, Router,
 };
 use chrono::Utc;
@@ -127,6 +127,8 @@ pub fn app(state: AppState) -> Router {
         .route("/health", axum::routing::get(health))
         .route("/api/decisions", get(decisions_feed))
         .route("/api/sessions/{session_id}", get(session_detail))
+        .route("/api/sessions/{session_id}/pause", post(pause_session))
+        .route("/sessions/{session_id}/pause", post(pause_session))
         .route("/proxy/{*path}", any(proxy))
         .route("/{*path}", any(proxy))
         .with_state(state)
@@ -211,6 +213,36 @@ fn load_session_detail(state: &AppState, session_id: &str) -> Result<DecisionFee
         },
         decisions,
     })
+}
+
+async fn pause_session(
+    State(state): State<AppState>,
+    Path(session_id): Path<String>,
+) -> Response<Body> {
+    match pause_session_in_ledger(&state, &session_id) {
+        Ok(()) => json_response(
+            StatusCode::ACCEPTED,
+            json!({
+                "status": "accepted",
+                "session_id": session_id,
+                "kite_revocation": "mock_pending"
+            }),
+        ),
+        Err(LedgerError::SessionNotFound(_)) => json_response(
+            StatusCode::NOT_FOUND,
+            json!({"error": "session_not_found", "session_id": session_id}),
+        ),
+        Err(err) => json_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json!({"error": "pause_session_error", "reason": err.to_string()}),
+        ),
+    }
+}
+
+fn pause_session_in_ledger(state: &AppState, session_id: &str) -> Result<(), LedgerError> {
+    let _guard = state.ledger_lock.lock().expect("ledger lock poisoned");
+    let ledger = Ledger::open(&state.db_path)?;
+    ledger.pause_session(session_id)
 }
 
 async fn proxy(
@@ -299,8 +331,21 @@ async fn proxy_inner(
     }
 
     reserve(&state, &session_id, estimated_cost).map_err(|err| err.to_string())?;
-    let approved =
-        try_reserve_approved(&state, &session_id, estimated_cost).map_err(|err| err.to_string())?;
+    let approved = match try_reserve_approved(&state, &session_id, estimated_cost) {
+        Ok(approved) => approved,
+        Err(LedgerError::SessionPaused(_)) => {
+            let decision = record_decision(
+                &state,
+                &session_id,
+                &request_key(&method, &uri),
+                estimated_cost,
+                Verdict::Deny,
+                "session is paused",
+            )?;
+            return Ok(deny_response(&decision));
+        }
+        Err(err) => return Err(err.to_string()),
+    };
     if !approved {
         let decision = record_decision(
             &state,
@@ -784,6 +829,80 @@ kite_passport:
         assert_eq!(body["summary"]["session_id"], json!("session-a"));
         assert_eq!(body["summary"]["decisions_count"], json!(1));
         assert_eq!(body["decisions"][0]["session_id"], json!("session-a"));
+    }
+
+    #[tokio::test]
+    async fn pause_session_returns_accepted_and_denies_future_spend() {
+        let state = test_state("50000", test_policy(1.0, 0.5));
+        let app = app(state);
+
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/proxy/paid-before-pause")
+                    .header(SESSION_HEADER, "paused-session")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method(Method::POST)
+                    .uri("/api/sessions/paused-session/pause")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::ACCEPTED);
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(body["status"], json!("accepted"));
+        assert_eq!(body["kite_revocation"], json!("mock_pending"));
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/proxy/paid-after-pause")
+                    .header(SESSION_HEADER, "paused-session")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::PAYMENT_REQUIRED);
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(body["verdict"], json!("deny"));
+        assert_eq!(body["reason"], json!("session is paused"));
+    }
+
+    #[tokio::test]
+    async fn pause_missing_session_returns_not_found() {
+        let state = test_state("50000", test_policy(1.0, 0.5));
+        let response = app(state)
+            .oneshot(
+                Request::builder()
+                    .method(Method::POST)
+                    .uri("/api/sessions/missing/pause")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
     }
 
     #[tokio::test]

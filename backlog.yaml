@@ -940,9 +940,10 @@ tasks:
       - "After pause, every subsequent try_reserve denies with reason 'session is paused'"
       - "Proxy responds 202 even if on-chain revocation is async"
     artifacts: ["crates/pennykite-proxy/src/handler.rs"]
-    status: pending
+    status: done
     priority: high
     tags: [rust]
+    notes: "Added POST /api/sessions/{id}/pause and /sessions/{id}/pause in pennykite-proxy. Endpoint flips SQLite session status to paused and returns 202 with kite_revocation=mock_pending; real on-chain/session-key revocation remains gated by Kite deployment/revocation API. Subsequent paid requests for the paused session now return PennyKite 402 with verdict=deny and reason 'session is paused'. Verified with cargo test -p pennykite-proxy, cargo test --workspace, and live smoke through demo target + proxy."
 
   - id: PK-D3-07
     phase: phase-3
