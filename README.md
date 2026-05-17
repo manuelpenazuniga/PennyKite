@@ -174,9 +174,10 @@ The Next.js dashboard (`http://localhost:3000`) exposes three pages, all backed 
 
 Clicking **Pause** on a session:
 
-1. The dashboard sends `POST /api/sessions/{id}/pause` to the proxy.
-2. The proxy marks the session `paused` in SQLite.
-3. Every subsequent payment request for that session is rejected immediately:
+1. The dashboard UI calls the Next.js API bridge at `POST /api/sessions/{id}/pause`.
+2. The Next.js bridge forwards the request to the proxy REST endpoint `POST /api/sessions/{id}/pause`.
+3. The proxy marks the session `paused` in SQLite.
+4. Every subsequent payment request for that session is rejected immediately:
 
 ```
 HTTP/1.1 402 Payment Required
@@ -331,7 +332,7 @@ curl -i -H 'x-pennykite-session: demo-session' \
 
 ```bash
 curl -i -X POST http://127.0.0.1:8787/api/sessions/demo-session/pause
-# → 200 OK
+# → 202 Accepted
 ```
 
 ### 7. Verify the session is blocked
@@ -349,7 +350,7 @@ curl -i -H 'x-pennykite-session: demo-session' \
 |---|---|
 | Dashboard shows no data | Verify `PENNYKITE_PROXY_URL=http://127.0.0.1:8787` — the dashboard reads from the proxy REST API, not directly from SQLite |
 | Port 8787 already in use | Change `--listen 127.0.0.1:<port>` and update `PENNYKITE_PROXY_URL` to match |
-| Port 3000 already in use | Run `PORT=3001 npm run dev` inside `dashboard/` |
+| Port 3000 already in use | Run `npx next dev --port 3001` inside `dashboard/` (the `dev` script hard-codes `--port 3000`) |
 
 ---
 
