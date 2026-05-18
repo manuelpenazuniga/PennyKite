@@ -837,10 +837,11 @@ tasks:
     acceptance_criteria:
       - "End-to-end flow succeeds twice in a row"
       - "Screenshots committed under documentation/screenshots/"
-    artifacts: []
-    status: pending
+    artifacts: ["documentation/screenshots/pk-d2-13-session-detail.png"]
+    status: done
     priority: critical
     tags: [integration]
+    notes: "Ran local e2e target API -> proxy -> dashboard with session pk-d2-13-1779073289. Two consecutive paid requests returned HTTP 200 with PAYMENT-RESPONSE headers, created two approve decisions, and persisted Kite attestation tx hashes 0x302981d9c21fbdd6126edfe0e10418accfd90ed8ba706b131c5bcd797d899f60 and 0xd3a4538b6e56f2c9f603ff6ff97af3a54a119663d9285d7cd4e51a061c1a0dea. Both receipts verified via Kite RPC with status=0x1, to=0x3973ce9a493eeb190a1ae8abbeb960533242d762, logs=1. Captured dashboard session detail screenshot at documentation/screenshots/pk-d2-13-session-detail.png. E2E initially exposed replacement transaction underpriced on consecutive attestations; fixed AlloyKiteRpc to wait for mined receipt and retry retryable nonce/replacement errors before persisting tx hash."
 
   # =====================================================
   # PHASE 3 — Day 3 (22 May): loop detector + demo + agent

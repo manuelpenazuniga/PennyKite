@@ -241,6 +241,24 @@ impl KiteRpc for AlloyKiteRpc {
     }
 
     async fn send_attestation(&self, session_id: B256, decision_hash: B256) -> Result<B256> {
+        let mut last_error = None;
+        for attempt in 1..=3 {
+            match self.send_attestation_once(session_id, decision_hash).await {
+                Ok(tx_hash) => return Ok(tx_hash),
+                Err(err) if attempt < 3 && is_retryable_attestation_error(&err) => {
+                    last_error = Some(err);
+                    tokio::time::sleep(Duration::from_secs(2)).await;
+                }
+                Err(err) => return Err(err),
+            }
+        }
+        Err(last_error
+            .unwrap_or_else(|| KiteError::Attestation("attestation failed after retries".into())))
+    }
+}
+
+impl AlloyKiteRpc {
+    async fn send_attestation_once(&self, session_id: B256, decision_hash: B256) -> Result<B256> {
         let signer = PrivateKeySigner::from_str(&self.private_key_hex)
             .map_err(|err| KiteError::Config(format!("invalid Kite private key: {err}")))?;
         let rpc_url: url::Url = self
@@ -257,7 +275,28 @@ impl KiteRpc for AlloyKiteRpc {
             .send()
             .await
             .map_err(|err| KiteError::Attestation(err.to_string()))?;
-        Ok(*pending.tx_hash())
+        let tx_hash = *pending.tx_hash();
+        let receipt = pending
+            .get_receipt()
+            .await
+            .map_err(|err| KiteError::Attestation(err.to_string()))?;
+        if !receipt.status() {
+            return Err(KiteError::Attestation(format!(
+                "attestation transaction reverted: {tx_hash}"
+            )));
+        }
+        Ok(tx_hash)
+    }
+}
+
+fn is_retryable_attestation_error(err: &KiteError) -> bool {
+    match err {
+        KiteError::Attestation(message) => {
+            message.contains("replacement transaction underpriced")
+                || message.contains("nonce too low")
+                || message.contains("already known")
+        }
+        _ => false,
     }
 }
 
@@ -373,6 +412,19 @@ mod tests {
 
         assert_eq!(tx, B256::from([0xAB; 32]));
         assert_eq!(counter.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn retryable_attestation_errors_are_classified() {
+        assert!(is_retryable_attestation_error(&KiteError::Attestation(
+            "server returned an error response: replacement transaction underpriced".into()
+        )));
+        assert!(is_retryable_attestation_error(&KiteError::Attestation(
+            "nonce too low".into()
+        )));
+        assert!(!is_retryable_attestation_error(&KiteError::Config(
+            "invalid private key".into()
+        )));
     }
 
     #[test]
