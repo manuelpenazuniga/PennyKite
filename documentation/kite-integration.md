@@ -48,18 +48,20 @@ The crate uses [alloy](https://github.com/alloy-rs/alloy) for Ethereum-compatibl
 The Solidity contract lives at `contracts/src/PennyKiteAttestor.sol`. Its role is to store an append-only log of decision hashes emitted by the proxy:
 
 ```solidity
-event DecisionAnchored(
-    address indexed agent,
+event Attested(
+    bytes32 indexed sessionId,
     bytes32 indexed decisionHash,
-    uint256 timestamp
+    uint256 timestamp,
+    address attester,
+    uint256 index
 );
 
-function attest(bytes32 decisionHash) external;
+function attest(bytes32 sessionId, bytes32 decisionHash) external returns (uint256 index);
 ```
 
 Every proxy decision — approve *or* deny — produces a `decision_hash = SHA3-256(canonical decision JSON)` on the Rust side. Once the contract is deployed and `pennykite-kite` is wired, that hash is submitted to Kite in a single transaction.
 
-**Current status:** The contract code is complete and covered by Foundry tests in CI. Foundry is not required for the local demo. Deployment to Kite testnet is tracked as `PK-D1-07`.
+**Current status:** The contract code is complete, covered by Foundry tests in CI, and deployed on Kite testnet at `0x3973Ce9a493EeB190A1Ae8ABbEb960533242d762`. Deploy tx: `0xb3ec20954ff43e68c910af6d60689eba621ca9d02bad512ea3c1cc1c304953f2`. Smoke `attest(bytes32,bytes32)` tx: `0xab95060fa504238bd3fc1f1c27364160c383d5e295050fc780016abd9b311e7f`.
 
 ---
 
@@ -70,7 +72,7 @@ proxy_inner (Rust)
     │
     ├─ compute decision_hash = SHA3-256(canonical decision JSON)
     ├─ ledger.record_decision(decision)          ← SQLite write (implemented)
-    └─ kite_rpc.attest(decision_hash)            ← on-chain write (pending PK-D2-09)
+    └─ kite_rpc.attest(session_id, decision_hash) ← on-chain write (pending PK-D2-09)
            │
            ▼
     PennyKiteAttestor.attest(decisionHash)
@@ -84,7 +86,6 @@ proxy_inner (Rust)
 - The `KiteRpc::attest` stub exists and will compile calls to the contract once the address is configured.
 
 **What is pending:**
-- Contract deployment to Kite testnet (`PK-D1-07`).
 - Wiring `PENNYKITE_ATTESTOR_ADDRESS` into the proxy startup and calling `attest()` post-decision (`PK-D2-09`).
 
 ---
@@ -134,4 +135,4 @@ Set the following environment variables (see `.env.example`):
 | `KITE_CHAIN_ID` | Kite testnet chain ID |
 | `KITE_PRIVATE_KEY` | Agent private key for attestation signing |
 | `SESSION_KEY` | Delegated session key address |
-| `PENNYKITE_ATTESTOR_ADDRESS` | Deployed contract address (pending `PK-D1-07`) |
+| `PENNYKITE_ATTESTOR_ADDRESS` | `0x3973Ce9a493EeB190A1Ae8ABbEb960533242d762` |

@@ -119,9 +119,9 @@ Purpose: Verify that backlog statuses match the actual state of the repo.
 | Backlog status | `pending` |
 | Artifacts expected | `.env.example` with all required keys |
 | Artifacts found | ✅ `.env.example` now exists with all required keys plus `PENNYKITE_PROXY_URL`, `DATABASE_PATH`, `USDC_CONTRACT` |
-| Remaining blocker | Real deployed addresses (`PENNYKITE_ATTESTOR_ADDRESS`, `PAY_TO`, `FACILITATOR_URL`) are placeholders — pending `PK-D1-07` |
-| Risk | **LOW** (DX blocker resolved for local dev; deployment addresses remain TBD) |
-| Recommendation | Status remains `pending` per backlog dependency on PK-D1-07. Template is usable for local development now. |
+| Remaining blocker | `PENNYKITE_ATTESTOR_ADDRESS` is now real; `PAY_TO` and `FACILITATOR_URL` remain project-specific placeholders |
+| Risk | **LOW** (DX blocker resolved for local dev; x402 receiver/facilitator still TBD) |
+| Recommendation | Can be closed once `PAY_TO` and `FACILITATOR_URL` are selected. |
 
 ---
 
@@ -168,5 +168,5 @@ Purpose: Verify that backlog statuses match the actual state of the repo.
 | MEDIUM | PK-D4-02 | Deploy artifacts are prepared, but public proxy URL and smoke test need Fly/Railway credentials/secrets |
 | MEDIUM | PK-D4-03 | Vercel deploy config is prepared, but production URL needs Vercel credentials and a public proxy URL |
 | MEDIUM | PK-D4-04 | Screenshots and hosted links not yet possible (deployment pending) |
-| LOW | PK-CI-04 | `.env.example` template committed; deployed addresses pending PK-D1-07 |
-| LOW | PK-D3-07, PK-D3-08, PK-D3-09, PK-D3-10, PK-D4-01, PK-D4-07, PK-CI-06, PK-CI-07, PK-CI-08 | All confirmed done and correct |
+| LOW | PK-CI-04 | `.env.example` template committed; PAY_TO/FACILITATOR_URL still need final project values |
+| LOW | PK-D1-07, PK-D3-07, PK-D3-08, PK-D3-09, PK-D3-10, PK-D4-01, PK-D4-07, PK-CI-06, PK-CI-07, PK-CI-08 | All confirmed done and correct |

@@ -266,6 +266,11 @@ forge create src/PennyKiteAttestor.sol:PennyKiteAttestor \
   --private-key $KITE_PRIVATE_KEY \
   --broadcast
 
+# Deployed on Kite testnet:
+# PENNYKITE_ATTESTOR_ADDRESS=0x3973Ce9a493EeB190A1Ae8ABbEb960533242d762
+# Deploy tx: 0xb3ec20954ff43e68c910af6d60689eba621ca9d02bad512ea3c1cc1c304953f2
+# Smoke attest tx: 0xab95060fa504238bd3fc1f1c27364160c383d5e295050fc780016abd9b311e7f
+
 # 3. Run the proxy
 ./target/release/pennykite-proxy \
   --policy ./policy/examples/conservative.yaml \

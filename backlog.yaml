@@ -488,9 +488,10 @@ tasks:
       - "Address documented in README"
       - "Successful smoke-call to attest() from the same wallet"
     artifacts: ["contracts/script/Deploy.s.sol", ".env.example"]
-    status: pending
+    status: done
     priority: critical
     tags: [solidity, kite, deploy]
+    notes: "Deployed PennyKiteAttestor to Kite testnet from 0xfa4dF578A5971E5fB02DdA3EE5240ef59f9d118F. Address: 0x3973Ce9a493EeB190A1Ae8ABbEb960533242d762. Deploy tx: 0xb3ec20954ff43e68c910af6d60689eba621ca9d02bad512ea3c1cc1c304953f2. Smoke call attest(bytes32,bytes32) succeeded with tx 0xab95060fa504238bd3fc1f1c27364160c383d5e295050fc780016abd9b311e7f and emitted Attested(sessionId=0x1, decisionHash=0x1111...). Verified both receipts via Kite RPC status=0x1 and contract bytecode via eth_getCode. Local forge test remains gated by missing forge-std checkout, but CI covers contract tests."
 
   - id: PK-D1-08
     phase: phase-1
@@ -1373,7 +1374,7 @@ tasks:
     status: pending
     priority: high
     tags: [dx]
-    notes: "Template committed with placeholders; final real deployed addresses remain blocked by PK-D1-07. File includes all required keys plus PENNYKITE_PROXY_URL, DATABASE_PATH, and USDC_CONTRACT."
+    notes: "Template committed with all required keys. KITE_RPC_URL, KITE_CHAIN_ID, and PENNYKITE_ATTESTOR_ADDRESS now use real Kite testnet values from PK-D1-07. PAY_TO and FACILITATOR_URL remain placeholders until the x402 facilitator/payee decision is final."
 
   - id: PK-CI-05
     phase: phase-cross
