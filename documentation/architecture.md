@@ -17,7 +17,7 @@ The proxy runs as a separate binary that the agent HTTP-routes through. A compro
 x402 is an atomic payment protocol: once the `PAYMENT-SIGNATURE` header is sent, the money has moved. PennyKite reads the upstream's `PAYMENT-REQUIRED` header *before* signing. If the request violates policy, it returns a `402 Payment Required` to the agent without ever signing a payment.
 
 **3. Every decision is recorded.**  
-Whether a request is approved or denied, a `Decision` row is written to the SQLite ledger with a SHA3-256 `decision_hash`. The hash is the anchor point for the future on-chain attestation.
+Whether a request is approved or denied, a `Decision` row is written to the SQLite ledger with a SHA3-256 `decision_hash`. When Kite attestation config is present, the hash is anchored on-chain and the tx hash is written back to the row.
 
 ---
 
@@ -61,7 +61,7 @@ x402 protocol adapters and EIP-3009 signing.
 - `policy.rs` — loads and validates YAML policy files into `Policy` structs.
 
 ### `pennykite-kite`
-Kite chain client (current state: stub with real RPC wiring). Holds the `KiteRpc` struct pointing at the Kite JSON-RPC endpoint. The `PennyKiteAttestor` contract is deployed on Kite testnet; attestation writes and Kite Passport session revocation are still proxy-integration work tracked as `PK-D2-09`.
+Kite chain client. `AlloyKiteRpc` signs and broadcasts `PennyKiteAttestor.attest(bytes32,bytes32)` transactions through the Kite JSON-RPC endpoint. Kite Passport quota validation and session revocation remain pending the final Passport ABI/API.
 
 ### `pennykite-proxy`
 The axum HTTP server binary. Assembles all crates into a running proxy. See [Proxy request flow](#proxy-request-flow) below.
@@ -196,7 +196,6 @@ Policy is immutable after proxy boot. Changing policy requires a proxy restart.
 
 | Feature | Status | Backlog |
 |---|---|---|
-| On-chain attestation writes | Contract deployed; proxy wiring still pending | PK-D2-09 |
 | Real Kite Passport session revocation | Mock — pause is SQLite-only today | PK-D2-13 |
 | Hosted proxy/dashboard | Local-only for v0.1 until deploy tasks land | PK-D4-02, PK-D4-03 |
 | TypeScript SDK package | Planned API surface only | Future v0.2 |

@@ -51,7 +51,7 @@ Observed behavior is correct for the demo: with fixed `--match-id`, the first th
 | P1 | Auto mode cleans up services immediately after printing URLs. | The session detail and dashboard URLs are gone by the time a reviewer opens them from a transcript. | Fixed in PK-D4-01: `PENNYKITE_DEMO_HOLD=1` keeps services alive until interrupted. |
 | P2 | Running the script inside the command sandbox can produce a false `Port 4100 is already in use` because local port binding is blocked. | Agent-only friction; normal terminal execution works. | Documented in PK-D4-01 verification: future agent runs should execute the script outside the sandbox. |
 | P2 | UI was not browser-verified during this task. | Terminal smoke proves backend and script behavior, but final Devpost video still needs visual review of feed, balance widget, session page, and kill-switch. | PK-D4-06: capture browser-based recording. |
-| P3 | Kite attestation/revocation remains `mock_pending`. | Demo narration must be explicit that local kill-switch is enforced in SQLite today while on-chain revocation waits on Kite testnet deploy/API. | PK-D1-07 / PK-D2-09 / PK-D2-13. |
+| P3 | Kite revocation remains `mock_pending`. | Demo narration must be explicit that attestation writes are best-effort on Kite while local kill-switch is enforced in SQLite today and on-chain revocation waits on the Kite Passport API. | PK-D2-13. |
 
 ## Decision
 

@@ -69,9 +69,10 @@ sequenceDiagram
     Proxy->>Ledger: record_decision(approve, $0.05, decision_hash)
     Proxy-->>Agent: 200 OK (upstream response forwarded)
 
-    Note over Proxy: 6. On-chain attestation (pending PK-D2-09)
-    Proxy->>Kite: attest(decision_hash) — stub today
-    Kite-->>Proxy: TxHash (future)
+    Note over Proxy: 6. Best-effort on-chain attestation
+    Proxy->>Kite: attest(session_id, decision_hash)
+    Kite-->>Proxy: TxHash
+    Proxy->>Ledger: set_attestation_tx(decision_id, tx_hash)
 ```
 
 ---

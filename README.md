@@ -276,7 +276,11 @@ forge create src/PennyKiteAttestor.sol:PennyKiteAttestor \
   --policy ./policy/examples/conservative.yaml \
   --upstream http://localhost:4100 \
   --listen 0.0.0.0:8787 \
-  --db ./pennykite.db
+  --db ./pennykite.db \
+  --kite-rpc-url "$KITE_RPC_URL" \
+  --kite-chain-id "$KITE_CHAIN_ID" \
+  --attestor-address "$PENNYKITE_ATTESTOR_ADDRESS" \
+  --kite-private-key "$KITE_PRIVATE_KEY"
 
 # 4. Run the dashboard
 cd dashboard

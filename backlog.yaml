@@ -565,7 +565,7 @@ tasks:
     status: done
     priority: critical
     tags: [rust, kite, web3]
-    notes: "KiteRpc trait + KiteClient with 5s TTL cache + AlloyKiteRpc skeleton with sol! ABI bindings for PennyKiteAttestor. 8 unit tests including the spec-mandated 'two calls within TTL produce one RPC call' acceptance criterion. On-chain smoke test (criterion 1) gated by PK-D1-07 contract deployment."
+    notes: "KiteRpc trait + KiteClient with 5s TTL cache + AlloyKiteRpc sol! ABI bindings for PennyKiteAttestor. 8 unit tests including the spec-mandated 'two calls within TTL produce one RPC call' acceptance criterion. Initial on-chain smoke was gated until PK-D1-07/PK-D2-09; attestation broadcasting is now wired by PK-D2-09."
 
   - id: PK-D1-12
     phase: phase-1
@@ -770,10 +770,11 @@ tasks:
     acceptance_criteria:
       - "Each row in `decisions` has a non-null kite_attestation_tx in success path"
       - "Failed attestations do NOT block the proxy response (best-effort, logged)"
-    artifacts: ["crates/pennykite-proxy/src/handler.rs"]
-    status: pending
+    artifacts: ["crates/pennykite-proxy/src/handler.rs", "crates/pennykite-kite/src/lib.rs", "crates/pennykite-proxy/src/main.rs"]
+    status: done
     priority: critical
     tags: [rust, kite]
+    notes: "Implemented best-effort Kite attestation wiring. AlloyKiteRpc now signs and broadcasts PennyKiteAttestor.attest(bytes32 sessionId, bytes32 decisionHash) using KITE_RPC_URL/KITE_CHAIN_ID/PENNYKITE_ATTESTOR_ADDRESS/KITE_PRIVATE_KEY config. Proxy records each Decision first, broadcasts attestation when configured, updates decisions.attestation_tx on success, and logs failures without blocking responses. Added proxy tests for successful tx persistence and failed-attestation best-effort behavior, plus Kite client config validation tests. End-to-end on-chain proxy smoke intentionally not run in-agent because KITE_PRIVATE_KEY must stay local."
 
   - id: PK-D2-10
     phase: phase-2

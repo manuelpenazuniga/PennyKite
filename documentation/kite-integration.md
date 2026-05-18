@@ -24,19 +24,12 @@ Kite's block time and gas costs make it practical to anchor *every* proxy decisi
 The `crates/pennykite-kite/` crate holds all Kite-specific logic. Its public surface:
 
 ```rust
-pub struct KiteRpc {
-    provider: RootProvider<...>,
-    attestor_address: Address,
+pub trait KiteRpc {
+    async fn fetch_remaining_quota_cents(&self, session_key: &str) -> Result<u64>;
+    async fn send_attestation(&self, session_id: B256, decision_hash: B256) -> Result<B256>;
 }
 
-impl KiteRpc {
-    pub fn new(rpc_url: &str, attestor_address: Address) -> Result<Self>;
-    pub fn attestor_address(&self) -> Address;
-    // Attestation write — currently a stub pending PK-D2-09
-    pub async fn attest(&self, decision_hash: [u8; 32]) -> Result<TxHash>;
-    // Session revocation — currently mock pending PK-D2-13
-    pub async fn revoke_session(&self, session_key: Address) -> Result<TxHash>;
-}
+pub struct AlloyKiteRpc;
 ```
 
 The crate uses [alloy](https://github.com/alloy-rs/alloy) for Ethereum-compatible JSON-RPC and transaction signing, targeting the Kite JSON-RPC endpoint (`KITE_RPC_URL`).
@@ -59,34 +52,35 @@ event Attested(
 function attest(bytes32 sessionId, bytes32 decisionHash) external returns (uint256 index);
 ```
 
-Every proxy decision — approve *or* deny — produces a `decision_hash = SHA3-256(canonical decision JSON)` on the Rust side. Once the contract is deployed and `pennykite-kite` is wired, that hash is submitted to Kite in a single transaction.
+Every proxy decision — approve *or* deny — produces a `decision_hash = SHA3-256(canonical decision JSON)` on the Rust side. When Kite attestation config is present, that hash is submitted to Kite in a best-effort transaction and the returned tx hash is persisted on the `Decision` row.
 
 **Current status:** The contract code is complete, covered by Foundry tests in CI, and deployed on Kite testnet at `0x3973Ce9a493EeB190A1Ae8ABbEb960533242d762`. Deploy tx: `0xb3ec20954ff43e68c910af6d60689eba621ca9d02bad512ea3c1cc1c304953f2`. Smoke `attest(bytes32,bytes32)` tx: `0xab95060fa504238bd3fc1f1c27364160c383d5e295050fc780016abd9b311e7f`.
 
 ---
 
-## Attestation flow (target state)
+## Attestation flow
 
 ```
 proxy_inner (Rust)
     │
     ├─ compute decision_hash = SHA3-256(canonical decision JSON)
-    ├─ ledger.record_decision(decision)          ← SQLite write (implemented)
-    └─ kite_rpc.attest(session_id, decision_hash) ← on-chain write (pending PK-D2-09)
+    ├─ ledger.record_decision(decision)
+    └─ kite_rpc.attest(session_id, decision_hash)
            │
            ▼
-    PennyKiteAttestor.attest(decisionHash)
+    PennyKiteAttestor.attest(sessionId, decisionHash)
            │
            ▼
-    emit DecisionAnchored(agent, decisionHash, block.timestamp)
+    emit Attested(sessionId, decisionHash, block.timestamp, attester, index)
 ```
 
 **What is implemented today:**
 - `decision_hash` is computed and stored in SQLite on every decision.
-- The `KiteRpc::attest` stub exists and will compile calls to the contract once the address is configured.
+- `AlloyKiteRpc::send_attestation` signs and broadcasts `attest(bytes32,bytes32)` through the configured Kite RPC.
+- The proxy updates `kite_attestation_tx` when the broadcast succeeds and logs failures without blocking the response.
 
 **What is pending:**
-- Wiring `PENNYKITE_ATTESTOR_ADDRESS` into the proxy startup and calling `attest()` post-decision (`PK-D2-09`).
+- Kite Passport quota validation and on-chain session revocation remain pending the final Passport ABI/API.
 
 ---
 

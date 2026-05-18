@@ -20,6 +20,7 @@ use axum::{
 use chrono::Utc;
 use pennykite_cost::{amount_to_usd, select_requirement};
 use pennykite_detect::{LoopDetector, RequestFingerprint};
+use pennykite_kite::{AlloyKiteRpc, KiteClient};
 use pennykite_ledger::{Ledger, LedgerError, SessionRecord};
 use pennykite_providers::{
     eip3009::{sign_transfer_with_authorization, TransferWithAuthorization},
@@ -29,7 +30,7 @@ use pennykite_types::{Decision, PaymentRequirement, Policy, Verdict};
 use serde::Serialize;
 use serde_json::json;
 use sha3::{Digest, Sha3_256};
-use tracing::info;
+use tracing::{info, warn};
 use uuid::Uuid;
 
 const PAYMENT_REQUIRED: &str = "payment-required";
@@ -46,6 +47,44 @@ pub struct AppState {
     pub loop_detectors: Arc<Mutex<HashMap<String, LoopDetector>>>,
     pub signer: PrivateKeySigner,
     pub usdc_contract: Address,
+    pub kite_attestor: Option<Arc<dyn DecisionAttestor>>,
+}
+
+#[async_trait]
+pub trait DecisionAttestor: Send + Sync {
+    async fn attest_decision(
+        &self,
+        session_id: &str,
+        decision_hash: &str,
+    ) -> Result<String, String>;
+}
+
+pub struct KiteDecisionAttestor {
+    client: KiteClient<AlloyKiteRpc>,
+}
+
+impl KiteDecisionAttestor {
+    pub fn new(client: KiteClient<AlloyKiteRpc>) -> Self {
+        Self { client }
+    }
+}
+
+#[async_trait]
+impl DecisionAttestor for KiteDecisionAttestor {
+    async fn attest_decision(
+        &self,
+        session_id: &str,
+        decision_hash: &str,
+    ) -> Result<String, String> {
+        let session_id = session_anchor_id(session_id);
+        let decision_hash = b256_from_hex(decision_hash)?;
+        let tx_hash = self
+            .client
+            .attest(session_id, decision_hash)
+            .await
+            .map_err(|err| err.to_string())?;
+        Ok(tx_hash.to_string())
+    }
 }
 
 pub struct UpstreamResponse {
@@ -326,7 +365,8 @@ async fn proxy_inner(
             0.0,
             Verdict::DenyLoop,
             "loop detected",
-        )?;
+        )
+        .await?;
         return Ok(deny_response(&decision));
     }
 
@@ -358,7 +398,8 @@ async fn proxy_inner(
             0.0,
             Verdict::DenyNetwork,
             "no allowed x402 payment requirement",
-        )?;
+        )
+        .await?;
         return Ok(deny_response(&decision));
     };
 
@@ -373,7 +414,8 @@ async fn proxy_inner(
             estimated_cost,
             Verdict::DenyBudget,
             "per-request cap exceeded",
-        )?;
+        )
+        .await?;
         return Ok(deny_response(&decision));
     }
 
@@ -388,7 +430,8 @@ async fn proxy_inner(
                 estimated_cost,
                 Verdict::Deny,
                 "session is paused",
-            )?;
+            )
+            .await?;
             return Ok(deny_response(&decision));
         }
         Err(err) => return Err(err.to_string()),
@@ -401,7 +444,8 @@ async fn proxy_inner(
             estimated_cost,
             Verdict::DenyBudget,
             "session budget exceeded",
-        )?;
+        )
+        .await?;
         return Ok(deny_response(&decision));
     }
 
@@ -423,7 +467,8 @@ async fn proxy_inner(
         estimated_cost,
         Verdict::Approve,
         "approved",
-    )?;
+    )
+    .await?;
 
     response_from_upstream(upstream, Some((estimated_cost, decision.id))).await
 }
@@ -503,7 +548,7 @@ fn try_reserve_approved(
     ledger.try_reserve(session_id, estimated_cost)
 }
 
-fn record_decision(
+async fn record_decision(
     state: &AppState,
     session_id: &str,
     request_key: &str,
@@ -523,14 +568,39 @@ fn record_decision(
         kite_attestation_tx: None,
     };
     decision.decision_hash = decision_hash(&decision)?;
-    let _guard = state.ledger_lock.lock().expect("ledger lock poisoned");
-    let ledger = Ledger::open(&state.db_path).map_err(|err| err.to_string())?;
-    ledger
-        .ensure_session(session_id, state.policy.session.budget_usd)
-        .map_err(|err| err.to_string())?;
-    ledger
-        .record_decision(&decision)
-        .map_err(|err| err.to_string())?;
+    {
+        let _guard = state.ledger_lock.lock().expect("ledger lock poisoned");
+        let ledger = Ledger::open(&state.db_path).map_err(|err| err.to_string())?;
+        ledger
+            .ensure_session(session_id, state.policy.session.budget_usd)
+            .map_err(|err| err.to_string())?;
+        ledger
+            .record_decision(&decision)
+            .map_err(|err| err.to_string())?;
+    }
+    if let Some(attestor) = &state.kite_attestor {
+        match attestor
+            .attest_decision(session_id, &decision.decision_hash)
+            .await
+        {
+            Ok(tx_hash) => {
+                let _guard = state.ledger_lock.lock().expect("ledger lock poisoned");
+                let ledger = Ledger::open(&state.db_path).map_err(|err| err.to_string())?;
+                ledger
+                    .set_attestation_tx(&decision.id, &tx_hash)
+                    .map_err(|err| err.to_string())?;
+                decision.kite_attestation_tx = Some(tx_hash);
+            }
+            Err(err) => {
+                warn!(
+                    session_id,
+                    decision_id = %decision.id,
+                    error = %err,
+                    "kite attestation failed"
+                );
+            }
+        }
+    }
     info!(
         session_id,
         verdict = ?decision.verdict,
@@ -554,6 +624,20 @@ fn decision_hash(decision: &Decision) -> Result<String, String> {
     let bytes = serde_json::to_vec(&canonical).map_err(|err| err.to_string())?;
     let hash = Sha3_256::digest(bytes);
     Ok(format!("0x{}", hex::encode(hash)))
+}
+
+fn session_anchor_id(session_id: &str) -> B256 {
+    let hash = Sha3_256::digest(session_id.as_bytes());
+    B256::from_slice(&hash)
+}
+
+fn b256_from_hex(value: &str) -> Result<B256, String> {
+    let value = value.strip_prefix("0x").unwrap_or(value);
+    let bytes = hex::decode(value).map_err(|err| err.to_string())?;
+    if bytes.len() != 32 {
+        return Err(format!("expected 32-byte hash, got {} bytes", bytes.len()));
+    }
+    Ok(B256::from_slice(&bytes))
 }
 
 fn observe_loop(
@@ -679,6 +763,7 @@ fn should_return_header(name: &str) -> bool {
 mod tests {
     use super::*;
     use axum::extract::Request;
+    use std::sync::atomic::{AtomicUsize, Ordering};
     use tower::ServiceExt;
 
     fn test_policy(budget_usd: f64, cap_usd: f64) -> Policy {
@@ -708,6 +793,14 @@ kite_passport:
     }
 
     fn test_state(price: &str, policy: Policy) -> AppState {
+        test_state_with_attestor(price, policy, None)
+    }
+
+    fn test_state_with_attestor(
+        price: &str,
+        policy: Policy,
+        kite_attestor: Option<Arc<dyn DecisionAttestor>>,
+    ) -> AppState {
         AppState {
             upstream: "http://stub-upstream".into(),
             db_path: format!("/tmp/pennykite-proxy-test-{}.db", Uuid::new_v4()),
@@ -721,6 +814,29 @@ kite_passport:
                 .parse()
                 .unwrap(),
             usdc_contract: Address::from_str("0x036CbD53842c5426634e7929541eC2318f3dCF7e").unwrap(),
+            kite_attestor,
+        }
+    }
+
+    struct StubAttestor {
+        tx_hash: String,
+        calls: Arc<AtomicUsize>,
+        fail: bool,
+    }
+
+    #[async_trait]
+    impl DecisionAttestor for StubAttestor {
+        async fn attest_decision(
+            &self,
+            _session_id: &str,
+            _decision_hash: &str,
+        ) -> Result<String, String> {
+            self.calls.fetch_add(1, Ordering::SeqCst);
+            if self.fail {
+                Err("stub attestation failure".into())
+            } else {
+                Ok(self.tx_hash.clone())
+            }
         }
     }
 
@@ -836,6 +952,101 @@ kite_passport:
         assert_eq!(body["summary"]["decisions_count"], json!(1));
         assert_eq!(body["decisions"][0]["session_id"], json!("feed-session"));
         assert_eq!(body["decisions"][0]["verdict"], json!("approve"));
+    }
+
+    #[tokio::test]
+    async fn successful_attestation_updates_decision_tx() {
+        let calls = Arc::new(AtomicUsize::new(0));
+        let tx_hash =
+            "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string();
+        let state = test_state_with_attestor(
+            "50000",
+            test_policy(1.0, 0.5),
+            Some(Arc::new(StubAttestor {
+                tx_hash: tx_hash.clone(),
+                calls: calls.clone(),
+                fail: false,
+            })),
+        );
+        let app = app(state);
+
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/proxy/paid")
+                    .header(SESSION_HEADER, "attested-session")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/decisions")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+
+        assert_eq!(calls.load(Ordering::SeqCst), 1);
+        assert_eq!(body["decisions"][0]["kite_attestation_tx"], json!(tx_hash));
+    }
+
+    #[tokio::test]
+    async fn failed_attestation_does_not_block_proxy_response() {
+        let calls = Arc::new(AtomicUsize::new(0));
+        let state = test_state_with_attestor(
+            "50000",
+            test_policy(1.0, 0.5),
+            Some(Arc::new(StubAttestor {
+                tx_hash: String::new(),
+                calls: calls.clone(),
+                fail: true,
+            })),
+        );
+        let app = app(state);
+
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/proxy/paid")
+                    .header(SESSION_HEADER, "best-effort-session")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/decisions")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+
+        assert_eq!(calls.load(Ordering::SeqCst), 1);
+        assert_eq!(
+            body["decisions"][0]["kite_attestation_tx"],
+            serde_json::Value::Null
+        );
     }
 
     #[tokio::test]

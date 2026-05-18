@@ -15,10 +15,13 @@
 //! testing on Kite testnet is gated by PK-D1-07 (contract deployment).
 
 use std::collections::HashMap;
+use std::str::FromStr;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use alloy::primitives::{Address, B256};
+use alloy::providers::ProviderBuilder;
+use alloy::signers::local::PrivateKeySigner;
 use alloy::sol;
 use async_trait::async_trait;
 use thiserror::Error;
@@ -36,11 +39,12 @@ sol! {
         event Attested(
             bytes32 indexed sessionId,
             bytes32 indexed decisionHash,
-            address indexed reporter,
-            uint256 timestamp
+            uint256 timestamp,
+            address attester,
+            uint256 index
         );
 
-        function attest(bytes32 sessionId, bytes32 decisionHash) external;
+        function attest(bytes32 sessionId, bytes32 decisionHash) external returns (uint256 index);
     }
 }
 
@@ -130,7 +134,11 @@ impl<T: KiteRpc> KiteClient<T> {
         // Slow path: call RPC and write back.
         let value = self.rpc.fetch_remaining_quota_cents(session_key).await?;
         self.write_cache(session_key, value);
-        info!(session_key, remaining_cents = value, "kite RPC verify_session");
+        info!(
+            session_key,
+            remaining_cents = value,
+            "kite RPC verify_session"
+        );
         Ok(value)
     }
 
@@ -179,29 +187,25 @@ impl<T: KiteRpc> KiteClient<T> {
 /// and the Kite Passport quota registry. Both addresses are required at
 /// construction so the client fails fast on misconfiguration.
 ///
-/// **Note**: the actual RPC wiring requires a Provider+Signer; that
-/// integration is implemented in PK-D1-07 once the attestor is deployed
-/// and we have a real RPC URL + private key. Until then this struct
-/// stores the configuration and returns a clear `Config` error from each
-/// method, so the proxy can light up without on-chain state.
 pub struct AlloyKiteRpc {
     rpc_url: String,
+    chain_id: u64,
     attestor_address: Address,
     kite_passport_address: Address,
-    /// Held for use once `send_attestation` is wired to alloy in PK-D1-07.
-    #[allow(dead_code)]
     private_key_hex: String,
 }
 
 impl AlloyKiteRpc {
     pub fn new(
         rpc_url: impl Into<String>,
+        chain_id: u64,
         attestor_address: Address,
         kite_passport_address: Address,
         private_key_hex: impl Into<String>,
     ) -> Self {
         Self {
             rpc_url: rpc_url.into(),
+            chain_id,
             attestor_address,
             kite_passport_address,
             private_key_hex: private_key_hex.into(),
@@ -210,6 +214,10 @@ impl AlloyKiteRpc {
 
     pub fn rpc_url(&self) -> &str {
         &self.rpc_url
+    }
+
+    pub fn chain_id(&self) -> u64 {
+        self.chain_id
     }
 
     pub fn attestor_address(&self) -> Address {
@@ -224,19 +232,32 @@ impl AlloyKiteRpc {
 #[async_trait]
 impl KiteRpc for AlloyKiteRpc {
     async fn fetch_remaining_quota_cents(&self, _session_key: &str) -> Result<u64> {
-        // Wired in PK-D1-07. The Kite Passport ABI is not yet final; once
+        // The Kite Passport ABI is not yet final; once
         // the team confirms the registry address + view function we will
         // build the alloy `Provider` here and call it.
         Err(KiteError::Config(
-            "AlloyKiteRpc::fetch_remaining_quota_cents not yet wired (depends on PK-D1-07)".into(),
+            "AlloyKiteRpc::fetch_remaining_quota_cents not yet wired (depends on Kite Passport ABI)".into(),
         ))
     }
 
-    async fn send_attestation(&self, _session_id: B256, _decision_hash: B256) -> Result<B256> {
-        // Wired in PK-D1-07. ABI is generated from the `sol!` macro above.
-        Err(KiteError::Config(
-            "AlloyKiteRpc::send_attestation not yet wired (depends on PK-D1-07)".into(),
-        ))
+    async fn send_attestation(&self, session_id: B256, decision_hash: B256) -> Result<B256> {
+        let signer = PrivateKeySigner::from_str(&self.private_key_hex)
+            .map_err(|err| KiteError::Config(format!("invalid Kite private key: {err}")))?;
+        let rpc_url: url::Url = self
+            .rpc_url
+            .parse()
+            .map_err(|err| KiteError::Config(format!("invalid Kite RPC URL: {err}")))?;
+        let provider = ProviderBuilder::new()
+            .with_chain_id(self.chain_id)
+            .wallet(signer)
+            .connect_http(rpc_url);
+        let contract = PennyKiteAttestor::new(self.attestor_address, &provider);
+        let pending = contract
+            .attest(session_id, decision_hash)
+            .send()
+            .await
+            .map_err(|err| KiteError::Attestation(err.to_string()))?;
+        Ok(*pending.tx_hash())
     }
 }
 
@@ -275,11 +296,7 @@ mod tests {
             Ok(self.quota_cents)
         }
 
-        async fn send_attestation(
-            &self,
-            _session_id: B256,
-            _decision_hash: B256,
-        ) -> Result<B256> {
+        async fn send_attestation(&self, _session_id: B256, _decision_hash: B256) -> Result<B256> {
             self.attest_calls.fetch_add(1, Ordering::SeqCst);
             Ok(B256::from([0xAB; 32]))
         }
@@ -364,6 +381,7 @@ mod tests {
         let passport = Address::from([0x22; 20]);
         let rpc = AlloyKiteRpc::new(
             "https://rpc.testnet.kite.example.com",
+            2368,
             attestor,
             passport,
             "0x".to_string() + &"00".repeat(32),
@@ -371,15 +389,17 @@ mod tests {
         assert_eq!(rpc.attestor_address(), attestor);
         assert_eq!(rpc.kite_passport_address(), passport);
         assert_eq!(rpc.rpc_url(), "https://rpc.testnet.kite.example.com");
+        assert_eq!(rpc.chain_id(), 2368);
     }
 
     #[tokio::test]
-    async fn alloy_kite_rpc_returns_config_error_until_wired() {
+    async fn alloy_kite_rpc_validates_config_before_attesting() {
         let rpc = AlloyKiteRpc::new(
-            "https://example.com",
+            "https://rpc.testnet.kite.example.com",
+            2368,
             Address::ZERO,
             Address::ZERO,
-            "00".repeat(32),
+            "not-a-private-key",
         );
         assert!(matches!(
             rpc.fetch_remaining_quota_cents("any").await,
